@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_cards.html" import offer_card %}
+{% block title %}Search · MarketplaceX{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    {% for m, label, icon in [('text','Text','fonts'),('voice','Voice','mic'),('image','Image','camera')] %}
+    <li class="nav-item" role="presentation"><button class="nav-link {{ 'active' if mode == m }}" data-bs-toggle="tab" data-bs-target="#tab-{{ m }}" type="button" role="tab"><i class="bi bi-{{ icon }}"></i> {{ label }}</button></li>
+    {% endfor %}
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane {{ 'show active' if mode == 'text' }}" id="tab-text" role="tabpanel">
+      <form action="/search" class="d-flex gap-2"><input type="hidden" name="mode" value="text">
+        <input class="form-control" name="q" value="{{ args.get('q', '') if mode == 'text' }}" placeholder="e.g. black running shoes under 2 million" aria-label="Search text">
+        <button class="btn btn-primary">Search</button></form>
+    </div>
+    <div class="tab-pane {{ 'show active' if mode == 'voice' }}" id="tab-voice" role="tabpanel">
+      <form action="/search" class="d-flex gap-2" id="voice-form"><input type="hidden" name="mode" value="voice">
+        <button type="button" class="btn btn-outline-danger" id="mic" aria-label="Start voice input"><i class="bi bi-mic-fill"></i></button>
+        <input class="form-control" name="q" id="transcript" value="{{ args.get('q', '') if mode == 'voice' }}" placeholder="Transcript appears here — or type it (e.g. wireless mouse under 500k)" aria-label="Voice transcript">
+        <button class="btn btn-primary">Search</button></form>
+      <div class="small text-muted mt-1" id="voice-status">Uses your browser's speech recognition when available.</div>
+    </div>
+    <div class="tab-pane {{ 'show active' if mode == 'image' }}" id="tab-image" role="tabpanel">
+      <p class="small text-muted mb-2">Pick a sample photo (simulated image encoder), or upload your own — unknown photos fall back to text search.</p>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% for key in sample_images %}
+        <a href="/search?mode=image&image={{ key }}" class="border rounded p-1 {{ 'border-primary border-2' if args.get('image') == key }}"><img src="{{ url_for('static', filename='sample_images/query-' ~ key ~ '.svg') }}" width="80" height="80" alt="Sample photo {{ key }}"></a>
+        {% endfor %}
+        <form action="/search" class="d-flex gap-2 align-items-center"><input type="hidden" name="mode" value="image"><input type="hidden" name="image" value="upload">
+          <input type="file" accept="image/*" class="form-control form-control-sm" aria-label="Upload photo" style="max-width:220px">
+          <input class="form-control form-control-sm" name="q" placeholder="Optional words" aria-label="Optional words" style="max-width:160px">
+          <button class="btn btn-sm btn-primary">Search by photo</button></form>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+{% if result.degraded %}<div class="alert alert-warning">Image could not be recognised — showing degraded results using text only.</div>{% endif %}
+
+<div class="row g-3">
+  <aside class="col-lg-3">
+    <form action="/search" class="card card-body small">
+      <input type="hidden" name="q" value="{{ args.get('q', '') }}"><input type="hidden" name="mode" value="{{ mode }}">
+      {% if args.get('image') %}<input type="hidden" name="image" value="{{ args.get('image') }}">{% endif %}
+      <label class="form-label" for="sort">Sort by</label>
+      <select class="form-select form-select-sm mb-2" id="sort" name="sort">
+        {% for s, l in [('relevance','Relevance'),('sales','Top sales'),('rating','Rating'),('newest','Newest'),('price_asc','Price: low to high'),('price_desc','Price: high to low')] %}
+        <option value="{{ s }}" {{ 'selected' if q.sort == s }}>{{ l }}</option>{% endfor %}
+      </select>
+      <label class="form-label" for="category">Category</label>
+      <select class="form-select form-select-sm mb-2" id="category" name="category"><option value="">Any</option>
+        {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if args.get('category')|string == c.id|string }}>{{ c.name }}</option>
+          {% for ch in c.children %}<option value="{{ ch.id }}" {{ 'selected' if args.get('category')|string == ch.id|string }}>— {{ ch.name }}</option>{% endfor %}{% endfor %}
+      </select>
+      <label class="form-label">Price (₫)</label>
+      <div class="d-flex gap-1 mb-2"><input class="form-control form-control-sm" name="min_price" placeholder="Min" aria-label="Min price" value="{{ args.get('min_price', '') }}"><input class="form-control form-control-sm" name="max_price" placeholder="Max" aria-label="Max price" value="{{ args.get('max_price', '') }}"></div>
+      <label class="form-label" for="min_rating">Min rating</label>
+      <select class="form-select form-select-sm mb-2" id="min_rating" name="min_rating"><option value="">Any</option>{% for r in [4.5, 4.7, 4.8] %}<option {{ 'selected' if args.get('min_rating') == r|string }}>{{ r }}</option>{% endfor %}</select>
+      {% for facet, field in [('brand','brand'),('location','location')] %}
+      <label class="form-label text-capitalize" for="{{ field }}">{{ facet }}</label>
+      <select class="form-select form-select-sm mb-2" id="{{ field }}" name="{{ field }}"><option value="">Any</option>
+        {% for name, n in result.facets[facet] %}<option value="{{ name }}" {{ 'selected' if args.get(field) == name }}>{{ name }} ({{ n }})</option>{% endfor %}
+        {% if args.get(field) and not result.facets[facet] %}<option selected>{{ args.get(field) }}</option>{% endif %}
+      </select>{% endfor %}
+      <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="in_stock" value="1" {{ 'checked' if args.get('in_stock') }}> In stock only</label>
+      <button class="btn btn-sm btn-outline-primary">Apply filters</button>
+      {% if result.facets.category %}<hr><div class="text-muted">Categories: {% for n, c in result.facets.category %}{{ n }} ({{ c }}){{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
+    </form>
+  </aside>
+  <div class="col-lg-9">
+    <div class="small text-muted mb-2">{{ result.items|length }} results · query {{ q.type }} · terms {{ q.terms|join(', ') or '—' }}{% if q.max_price %} · under {{ q.max_price|vnd }}{% endif %} · trace {{ result.trace_id }}</div>
+    {% if not result.items %}
+      <div class="alert alert-info"><strong>No results.</strong> {% if result.relax_hints %}Try: <ul class="mb-0">{% for h in result.relax_hints %}<li>{{ h }}</li>{% endfor %}</ul>{% endif %}</div>
+    {% endif %}
+    <div class="row g-2">
+      {% for i in result.items %}{{ offer_card(i.offer, ('Out of stock' if i.stock <= 0 else None), i.trace_id ~ ' · score ' ~ i.score) }}{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/voice.js') }}"></script>{% endblock %}
