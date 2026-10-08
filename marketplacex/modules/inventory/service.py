@@ -77,8 +77,11 @@ def commit(attempt_id: str) -> None:
     db.session.commit()
 
 
-def release(attempt_id: str) -> None:
-    for r in Reservation.query.filter_by(attempt_id=attempt_id, status="held").all():
+def release(attempt_id: str, offer_ids: list[int] | None = None) -> None:
+    q = Reservation.query.filter_by(attempt_id=attempt_id, status="held")
+    if offer_ids is not None:
+        q = q.filter(Reservation.offer_id.in_(offer_ids))
+    for r in q.all():
         led = get_ledger(r.offer_id)
         led.reserved -= r.qty
         led.available += r.qty

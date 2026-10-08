@@ -1,7 +1,7 @@
 """Order aggregate: the only place where order status changes (BR05)."""
 from __future__ import annotations
 
-from ...errors import IllegalTransition, NotFound
+from ...errors import IllegalTransition, NotFound, ValidationError
 from ...events import publish
 from ...extensions import db
 from ..admin import policy
@@ -89,3 +89,55 @@ def orders_of_shop(shop, status: str | None = None) -> list[Order]:
 
 def orders_of_group(group_id: int) -> list[Order]:
     return Order.query.filter_by(group_id=group_id).order_by(Order.id).all()
+
+
+def compensate_order(order: Order, previous_status: str) -> None:
+    """Release stock and money held for one cancelled order (FR16)."""
+    from ..inventory import service as inventory
+    from ..payment import service as payment
+    offer_ids = [it.offer_id for it in order.items]
+    if previous_status in ("Draft", "PendingPayment"):
+        inventory.release(order.attempt_id, offer_ids)
+        siblings = orders_of_group(order.group_id)
+        if all(o.status in state_machine.TERMINAL for o in siblings):
+            p = payment.latest_for_group(order.group_id)
+            if p is not None and p.status == "pending":
+                payment.void(p.id)
+        return
+    for it in order.items:
+        inventory.return_committed(it.offer_id, it.qty)
+    p = payment.captured_for_group(order.group_id)
+    if p is not None:
+        amount = min(order.total_vnd, payment.refundable_vnd(p.id))
+        if amount > 0:
+            payment.refund(p.id, amount, f"cancel-{order.id}")
+
+
+def request_cancel(customer, order: Order, reason: str) -> Order:
+    if order.customer_id != customer.id:
+        raise NotFound("Order not found")
+    reason = (reason or "").strip() or "Cancelled by customer"
+    prev = order.status
+    if prev in ("Draft", "PendingPayment", "Confirmed"):
+        transition(order, "Cancelled", customer, reason)
+        compensate_order(order, prev)
+    elif prev in ("Preparing", "ReadyToShip"):
+        transition(order, "CancelRequested", customer, reason)
+    else:
+        raise IllegalTransition(f"Orders in status {prev} can no longer be cancelled")
+    return order
+
+
+def resolve_cancel(seller, order: Order, approve: bool, reason: str) -> Order:
+    if order.shop.owner_id != seller.id:
+        raise NotFound("Order not found")
+    if order.status != "CancelRequested":
+        raise IllegalTransition("There is no pending cancellation request")
+    if not (reason or "").strip():
+        raise ValidationError("Reason is required")
+    if approve:
+        transition(order, "Cancelled", seller, reason)
+        compensate_order(order, "Confirmed")
+    else:
+        transition(order, order.cancel_from, seller, reason)
+    return order
