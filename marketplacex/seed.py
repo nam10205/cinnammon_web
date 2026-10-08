@@ -118,6 +118,55 @@ def seed_promotions() -> None:
     db.session.commit()
 
 
+def _buy(customer, key: str, qty: int = 1, codes=None):
+    """Place and pay an order through the real checkout saga."""
+    import uuid
+
+    from .modules.cart import service as cart
+    from .modules.catalog.models import Product
+    from .modules.checkout import service as checkout
+    from .modules.order import service as order_service
+    from .modules.payment import service as payment
+    p = Product.query.filter_by(title=SEED_KEYS[key]).one()
+    cart.add_item(customer, p.variants[0].offer.id, qty)
+    g = checkout.quote(customer, customer.addresses[0].id, codes or [])
+    checkout.place_order(customer, g.id, uuid.uuid4().hex, g.quote_hash)
+    pa = payment.latest_for_group(g.id)
+    body = payment.simulate(pa.id, "success")
+    payment.handle_callback(body["payload"], body["signature"])
+    return order_service.orders_of_group(g.id)[0]
+
+
+def _ship(order, deliver: bool):
+    from .modules.identity.models import User
+    from .modules.logistics import service as logistics
+    from .modules.seller import service as seller
+    owner = db.session.get(User, order.shop.owner_id)
+    seller.accept(owner, order.id)
+    sh = seller.pack(owner, order.id, 700)
+    seller.hand_over(owner, order.id)
+    while deliver and order.status != "Delivered":
+        logistics.advance(sh)
+    return order
+
+
+def seed_demo_orders() -> None:
+    from .modules.identity.models import User
+    from .modules.returns import service as returns
+    from .modules.settlement import service as settlement
+    alice = User.query.filter_by(email="alice@demo").one()
+    admin = User.query.filter_by(email="admin@demo").one()
+    _ship(_buy(alice, "P11", 2), deliver=True)
+    policy.advance_clock(8 * 24)  # demo clock: let the first order's return window close
+    settlement.release_eligible(admin)
+    o = _ship(_buy(alice, "P01", 1), deliver=True)
+    returns.open_case(alice, o.id, {o.items[0].id: 1}, "Size does not fit", "return_and_refund",
+                      "Size 42 is too small, I would like to return it.")
+    _ship(_buy(alice, "P07", 1), deliver=False)
+    _buy(alice, "P12", 1)
+    _ship(_buy(alice, "P03", 1), deliver=True)
+
+
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
