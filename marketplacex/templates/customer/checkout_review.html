@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Review order · MarketplaceX{% endblock %}
+{% block content %}
+{% set p = g.quote_payload %}
+<h1 class="h4">Review your order</h1>
+{% if p.unavailable %}<div class="alert alert-warning"><strong>Not included:</strong><ul class="mb-0">{% for u in p.unavailable %}<li>{{ u.title }} — {{ u.reason }}</li>{% endfor %}</ul></div>{% endif %}
+<div class="row g-4">
+  <div class="col-lg-7">
+  {% for l in p.shops %}
+    <div class="card mb-3"><div class="card-header bg-white"><i class="bi bi-shop"></i> {{ l.shop_name }} <span class="text-muted small">· becomes its own order</span></div>
+      <ul class="list-group list-group-flush">
+        {% for i in l["items"] %}<li class="list-group-item d-flex justify-content-between"><span>{{ i.title }} <small class="text-muted">({{ i.variant }})</small> × {{ i.qty }}</span><span>{{ (i.unit_price_vnd * i.qty)|vnd }}</span></li>{% endfor %}
+      </ul>
+      <div class="card-body small">
+        <div class="d-flex justify-content-between"><span>Merchandise</span><span>{{ l.merchandise_vnd|vnd }}</span></div>
+        {% if l.shop_discount_vnd %}<div class="d-flex justify-content-between text-success"><span>Shop voucher</span><span>−{{ l.shop_discount_vnd|vnd }}</span></div>{% endif %}
+        {% if l.platform_discount_vnd %}<div class="d-flex justify-content-between text-success"><span>Platform voucher</span><span>−{{ l.platform_discount_vnd|vnd }}</span></div>{% endif %}
+        <div class="d-flex justify-content-between"><span>Shipping</span><span>{{ l.shipping_vnd|vnd }}{% if l.shipping_discount_vnd %} <s class="text-muted">{{ (l.shipping_vnd + l.shipping_discount_vnd)|vnd }}</s>{% endif %}</span></div>
+        <div class="d-flex justify-content-between fw-semibold"><span>Shop total</span><span>{{ l.total_vnd|vnd }}</span></div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card shadow-sm"><div class="card-body">
+      <dl class="row mb-2">
+        <dt class="col-7">Merchandise</dt><dd class="col-5 text-end">{{ g.merchandise_vnd|vnd }}</dd>
+        <dt class="col-7">Discounts</dt><dd class="col-5 text-end text-success">−{{ g.discount_vnd|vnd }}</dd>
+        <dt class="col-7">Shipping</dt><dd class="col-5 text-end">{{ g.shipping_vnd|vnd }}</dd>
+        <dt class="col-7 h5">Total payable</dt><dd class="col-5 text-end h5 price">{{ g.total_vnd|vnd }}</dd>
+      </dl>
+      {% if p.applied %}<div class="small mb-2">Vouchers: {% for a in p.applied %}<code>{{ a.code }}</code> (−{{ a.amount_vnd|vnd }}) {% endfor %}</div>{% endif %}
+      <div class="small text-muted mb-3">Quote expires at {{ g.quote_expires_at|dt }} UTC · quote {{ g.quote_hash[:10] }}…</div>
+      <form method="post" action="{{ url_for('checkout.place', group_id=g.id) }}">
+        <input type="hidden" name="quote_hash" value="{{ g.quote_hash }}">
+        <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+        <label class="form-check small mb-2"><input class="form-check-input" type="checkbox" required> I agree to pay {{ g.total_vnd|vnd }} and to the shops' terms.</label>
+        <button class="btn btn-primary w-100 btn-lg">Place order</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -49,3 +49,31 @@ def captured_payment(amount, group_id=1, attempt="att-cap"):
     body = pay.simulate(p.id, "success")
     pay.handle_callback(body["payload"], body["signature"])
     return p
+
+
+def _callback(group_id, outcome):
+    from marketplacex.modules.payment import service as pay
+    p = pay.latest_for_group(group_id)
+    body = pay.simulate(p.id, outcome)
+    pay.handle_callback(body["payload"], body["signature"])
+    return p
+
+
+def pay_success(group_id):
+    return _callback(group_id, "success")
+
+
+def pay_fail(group_id):
+    return _callback(group_id, "fail")
+
+
+def paid_order(customer, key, qty=1):
+    import uuid
+    from marketplacex.modules.cart import service as cart
+    from marketplacex.modules.checkout import service as checkout
+    from marketplacex.modules.order import service as order_service
+    cart.add_item(customer, offer_id(key), qty)
+    g = checkout.quote(customer, customer.addresses[0].id, [])
+    checkout.place_order(customer, g.id, uuid.uuid4().hex, g.quote_hash)
+    pay_success(g.id)
+    return order_service.orders_of_group(g.id)[0]

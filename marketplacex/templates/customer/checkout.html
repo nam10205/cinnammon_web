@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Checkout · MarketplaceX{% endblock %}
+{% block content %}
+<h1 class="h4">Checkout</h1>
+<form method="post" action="{{ url_for('checkout.make_quote') }}" class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Delivery address</h2>
+      {% for a in user.addresses %}
+      <label class="form-check d-block border rounded p-2 mb-2"><input class="form-check-input ms-0 me-2" type="radio" name="address_id" value="{{ a.id }}" {{ 'checked' if a.id == default_address_id }}>
+        <strong>{{ a.recipient }}</strong> · {{ a.phone }}<br><small class="ms-4">{{ a.line }}, {{ a.city }}</small></label>
+      {% else %}<p class="text-muted">No address yet. <a href="{{ url_for('identity.account') }}">Add one</a>.</p>{% endfor %}
+    </div></div>
+    {% for g in groups %}
+    <div class="card mb-2"><div class="card-header bg-white"><i class="bi bi-shop"></i> {{ g.shop.name }}</div>
+      <ul class="list-group list-group-flush">{% for i in g.items if i.selected %}<li class="list-group-item d-flex justify-content-between"><span>{{ i.offer.product.title }} × {{ i.qty }}</span><span>{{ (i.offer.price_vnd * i.qty)|vnd }}</span></li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <label class="form-label" for="vouchers">Voucher codes (comma separated)</label>
+      <input class="form-control mb-2" id="vouchers" name="vouchers" value="{{ vouchers }}" placeholder="SALE10, SPORT80">
+      <p class="small text-muted">Prices, vouchers and shipping are recalculated on the server. You will review the final total before paying.</p>
+      <button class="btn btn-primary w-100">Get quote</button>
+    </div></div>
+  </div>
+</form>
+{% endblock %}
