@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block content %}{% include "seller/_nav.html" %}
+<div class="row g-3 mb-4">
+  {% for st in ['Confirmed','Preparing','ReadyToShip','Shipped','Delivered','Completed','CancelRequested','ReturnRequested'] %}
+  <div class="col-6 col-md-3"><a class="text-decoration-none" href="{{ url_for('seller.orders', status=st) }}"><div class="card card-body text-center"><div class="stat text-dark">{{ counts.get(st, 0) }}</div><div class="small text-muted">{{ st }}</div></div></a></div>
+  {% endfor %}
+</div>
+{% if overdue %}<div class="alert alert-danger"><strong>Pickup overdue:</strong> {% for s in overdue %}<a href="{{ url_for('seller.order_detail', order_id=s.order_id) }}">#{{ s.order_id }}</a> {% endfor %} — the carrier missed the promised pickup time.</div>{% endif %}
+<h2 class="h6">Needs your action</h2>
+<div class="list-group">
+{% for o in todo %}<a class="list-group-item list-group-item-action d-flex justify-content-between" href="{{ url_for('seller.order_detail', order_id=o.id) }}"><span>#{{ o.id }} · {{ o.customer.name }} · {{ o.items|length }} item(s)</span><span>{{ status_badge(o.status) }} {{ o.total_vnd|vnd }}</span></a>
+{% else %}<div class="list-group-item text-muted">Nothing to do right now.</div>{% endfor %}
+</div>
+{% endblock %}

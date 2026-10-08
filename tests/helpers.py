@@ -77,3 +77,27 @@ def paid_order(customer, key, qty=1):
     checkout.place_order(customer, g.id, uuid.uuid4().hex, g.quote_hash)
     pay_success(g.id)
     return order_service.orders_of_group(g.id)[0]
+
+
+def _owner_of(order):
+    from marketplacex.modules.identity.models import User
+    return db.session.get(User, order.shop.owner_id)
+
+
+def shipped_order(customer, key, qty=1):
+    from marketplacex.modules.seller import service as seller
+    o = paid_order(customer, key, qty)
+    s = _owner_of(o)
+    seller.accept(s, o.id)
+    seller.pack(s, o.id, 800)
+    seller.hand_over(s, o.id)
+    return o
+
+
+def delivered_order(customer, key, qty=1):
+    from marketplacex.modules.logistics import service as logistics
+    o = shipped_order(customer, key, qty)
+    sh = o.shipments[0]
+    while o.status != "Delivered":
+        logistics.advance(sh)
+    return o

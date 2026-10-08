@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block content %}{% include "seller/_nav.html" %}
+<div class="alert alert-info">You don't have a shop yet. {% if has_endpoint('seller.shop_profile') %}<a href="{{ url_for('seller.shop_profile') }}">Create your shop</a>.{% endif %}</div>
+{% endblock %}

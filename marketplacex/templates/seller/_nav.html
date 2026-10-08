@@ -1,0 +1,12 @@
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 mb-0 me-3">Seller Center</h1>
+  {% if seller_shop %}<span class="badge bg-dark">{{ seller_shop.name }}</span>{% endif %}
+  {% if seller_shops and seller_shops|length > 1 %}
+  <form method="post" action="{{ url_for('seller.switch_shop') }}" class="d-flex gap-1"><select name="shop_id" class="form-select form-select-sm" aria-label="Switch shop">{% for s in seller_shops %}<option value="{{ s.id }}" {{ 'selected' if seller_shop and s.id == seller_shop.id }}>{{ s.name }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-secondary">Switch</button></form>
+  {% endif %}
+  <nav class="nav nav-pills small ms-auto">
+    {% for ep, label in [('seller.dashboard','Dashboard'),('seller.orders','Orders'),('seller.products','Listings'),('seller.inventory','Inventory & price'),('seller.returns','Returns'),('seller.reviews','Reviews'),('seller.settlement','Settlement'),('seller.shop_profile','Shop profile')] %}
+      {% if has_endpoint(ep) %}<a class="nav-link {{ 'active' if request.endpoint == ep }}" href="{{ url_for(ep) }}">{{ label }}</a>{% endif %}
+    {% endfor %}
+  </nav>
+</div>
