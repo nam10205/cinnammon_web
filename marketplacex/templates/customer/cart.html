@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Cart · MarketplaceX{% endblock %}
+{% block content %}
+<h1 class="h4">Shopping cart <small class="text-muted fs-6">version {{ cart.version }}</small></h1>
+{% for g in groups %}
+<div class="card mb-3">
+  <div class="card-header bg-white"><i class="bi bi-shop"></i> <a href="{{ url_for('catalog.shop', shop_id=g.shop.id) }}">{{ g.shop.name }}</a> <span class="text-muted small">· {{ g.shop.location }}</span></div>
+  <ul class="list-group list-group-flush">
+  {% for i in g.items %}
+    <li class="list-group-item d-flex flex-wrap align-items-center gap-3">
+      <form method="post" action="{{ url_for('cart.select', offer_id=i.offer_id) }}">
+        <input type="hidden" name="selected" value="{{ '0' if i.selected else '1' }}">
+        <button class="btn btn-sm {{ 'btn-success' if i.selected else 'btn-outline-secondary' }}" aria-label="{{ 'Unselect' if i.selected else 'Select' }} {{ i.offer.product.title }}"><i class="bi bi-{{ 'check-square' if i.selected else 'square' }}"></i></button>
+      </form>
+      <img src="{{ i.offer.product.image_url }}" width="56" height="56" alt="" class="rounded border">
+      <div class="flex-grow-1"><a href="{{ url_for('catalog.product', product_id=i.offer.product.id) }}">{{ i.offer.product.title }}</a>
+        <div class="small text-muted">{{ i.offer.variant.name }} · {{ i.offer.price_vnd|vnd }}{% if i.offer.product.status != 'active' %} · <span class="text-danger">unavailable</span>{% endif %}</div></div>
+      <form method="post" action="{{ url_for('cart.change', offer_id=i.offer_id) }}" class="d-flex gap-1">
+        <input type="hidden" name="version" value="{{ cart.version }}">
+        <input class="form-control form-control-sm" name="qty" value="{{ i.qty }}" style="width:4.5rem" aria-label="Quantity for {{ i.offer.product.title }}">
+        <button class="btn btn-sm btn-outline-primary">Update</button>
+      </form>
+      <form method="post" action="{{ url_for('cart.change', offer_id=i.offer_id) }}"><input type="hidden" name="qty" value="0"><button class="btn btn-sm btn-outline-danger" aria-label="Remove"><i class="bi bi-trash"></i></button></form>
+      <div class="price" style="min-width:8rem;text-align:right">{{ (i.offer.price_vnd * i.qty)|vnd }}</div>
+    </li>
+  {% endfor %}
+  </ul>
+  <div class="card-footer bg-white text-end small">Shop subtotal (selected): <strong>{{ g.subtotal_vnd|vnd }}</strong></div>
+</div>
+{% else %}
+<div class="alert alert-light">Your cart is empty. <a href="/">Keep shopping</a></div>
+{% endfor %}
+{% if groups %}
+<div class="card"><div class="card-body d-flex justify-content-between align-items-center">
+  <div>Selected merchandise: <span class="h5 price">{{ total|vnd }}</span><div class="small text-muted">Vouchers and shipping are calculated on the server at checkout.</div></div>
+  {% if has_endpoint('checkout.start') %}<a class="btn btn-primary btn-lg {{ 'disabled' if not total }}" href="{{ url_for('checkout.start') }}">Check out</a>{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}
