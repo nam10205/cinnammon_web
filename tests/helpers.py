@@ -41,3 +41,11 @@ def alice_user():
 def cat(name):
     from marketplacex.modules.catalog.models import Category
     return Category.query.filter_by(name=name).one()
+
+
+def captured_payment(amount, group_id=1, attempt="att-cap"):
+    from marketplacex.modules.payment import service as pay
+    p = pay.authorize(group_id, amount, attempt)
+    body = pay.simulate(p.id, "success")
+    pay.handle_callback(body["payload"], body["signature"])
+    return p

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6"><div class="card shadow-sm border-primary"><div class="card-body">
+  <div class="text-muted small">Simulated payment provider · reference {{ payment.provider_ref }}</div>
+  <h1 class="h4 mt-2">Pay {{ payment.amount_vnd|vnd }}</h1>
+  <p class="small">The marketplace never sees card data; the provider calls back with a signed result (FR13). Status: <strong>{{ payment.status }}</strong></p>
+  {% if payment.status == 'pending' %}
+  <div class="d-flex flex-wrap gap-2">
+    <form method="post" action="{{ url_for('payment.simulate', payment_id=payment.id, outcome='success') }}"><button class="btn btn-success">Approve payment</button></form>
+    <form method="post" action="{{ url_for('payment.simulate', payment_id=payment.id, outcome='duplicate') }}"><button class="btn btn-outline-success">Approve (send duplicate callback)</button></form>
+    <form method="post" action="{{ url_for('payment.simulate', payment_id=payment.id, outcome='fail') }}"><button class="btn btn-outline-danger">Decline payment</button></form>
+  </div>
+  {% endif %}
+</div></div></div></div>
+{% endblock %}
