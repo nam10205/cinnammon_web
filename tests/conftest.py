@@ -68,3 +68,25 @@ def seeded(app):
 def alice(seeded):
     from helpers import alice_user
     return alice_user()
+
+
+@pytest.fixture
+def make_order(seeded):
+    from helpers import alice_user, offer_id
+    from marketplacex.modules.admin import policy
+    from marketplacex.modules.catalog import service as catalog
+    from marketplacex.modules.order.models import Order, OrderItem
+
+    def _make(status="Draft", key="P03", qty=1):
+        o = catalog.get_offer(offer_id(key))
+        a = alice_user()
+        order = Order(group_id=0, attempt_id="test", shop_id=o.shop_id, customer_id=a.id, status=status,
+                      address_snapshot=a.addresses[0].as_dict(), merchandise_vnd=o.price_vnd * qty,
+                      discount_vnd=0, shipping_vnd=28000, total_vnd=o.price_vnd * qty + 28000,
+                      created_at=policy.now())
+        order.items.append(OrderItem(offer_id=o.id, title_snapshot=o.product.title, variant_snapshot=o.variant.name,
+                                     unit_price_vnd=o.price_vnd, qty=qty, discount_vnd=0))
+        db.session.add(order)
+        db.session.commit()
+        return order
+    return _make
