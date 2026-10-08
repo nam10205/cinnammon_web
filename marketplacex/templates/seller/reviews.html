@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}{% include "seller/_nav.html" %}
+{% for r in reviews %}
+<div class="card mb-2"><div class="card-body">
+  <div><strong>{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</strong> · {{ r.order_item.title_snapshot }} · <span class="small text-muted">{{ r.customer.name }} · {{ r.created_at|dt }}</span> {% if r.status == 'hidden' %}<span class="badge bg-secondary">hidden by moderator</span>{% endif %}</div>
+  <div>{{ r.comment }}</div>
+  {% if r.seller_reply %}<div class="small bg-light p-2 mt-1 rounded"><strong>Your reply:</strong> {{ r.seller_reply }}</div>
+  {% else %}<form method="post" action="{{ url_for('review.seller_reply', review_id=r.id) }}" class="d-flex gap-2 mt-2"><input class="form-control form-control-sm" name="text" placeholder="Reply publicly" aria-label="Reply" required><button class="btn btn-sm btn-outline-primary">Reply</button></form>{% endif %}
+</div></div>
+{% else %}<p class="text-muted">No reviews yet.</p>{% endfor %}
+{% endblock %}
