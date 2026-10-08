@@ -68,5 +68,6 @@
 <footer class="text-center text-muted small py-4">MarketplaceX — academic demo of a multivendor marketplace design. Not an official Shopee system.</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}
+{% if (not current_user or current_user.role == 'customer') and has_endpoint('assistant.chat') %}{% include "_assistant.html" %}{% endif %}
 </body>
 </html>

@@ -17,6 +17,7 @@ def app(tmp_path):
         "PAYMENT_WEBHOOK_SECRET": "whsec",
         "NOTIFICATION_FAILURE_RATE": 0,
         "UPLOAD_DIR": str(tmp_path / "uploads"),
+        "GEMINI_API_KEY": "",
     })
     ctx = app.app_context()
     ctx.push()

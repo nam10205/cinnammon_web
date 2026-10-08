@@ -36,6 +36,22 @@ python3 -m venv .venv
   - Seeding works offline, but photos need internet. Without it, a placeholder image is shown.
   - Image search uses the prototype's three sample photos, so it only returns the 12 prototype products.
 
+### Shopping assistant (Gemini chatbot)
+
+Customer pages have a chat bubble in the lower-right corner.
+- It answers questions about products, vouchers, shipping, returns and the logged-in customer's own orders.
+- Each answer is based on our live product search, store policies and that customer's orders, so prices and links are real.
+- It gives advice and links only; it cannot place, cancel or refund orders.
+
+To enable it, create a `.env` file in the project root (it is git-ignored):
+
+```
+GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-3.5-flash
+```
+
+Without a key, the bubble still shows but says the assistant is unavailable.
+
 ## 5-minute demo script
 
 1. **Customer:** open the login page and click *customer*.
