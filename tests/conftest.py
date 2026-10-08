@@ -55,3 +55,16 @@ def login():
         with client.session_transaction() as s:
             s["user_id"] = user.id
     return _login
+
+
+@pytest.fixture
+def seeded(app):
+    from marketplacex import seed
+    seed.seed_all_for_tests()
+    return True
+
+
+@pytest.fixture
+def alice(seeded):
+    from helpers import alice_user
+    return alice_user()

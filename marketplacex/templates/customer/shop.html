@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_cards.html" import offer_card %}
+{% block content %}
+<div class="card mb-3"><div class="card-body d-flex flex-wrap align-items-center gap-3">
+  <div class="display-6"><i class="bi bi-shop"></i></div>
+  <div class="flex-grow-1"><h1 class="h4 mb-0">{{ shop.name }} {% if shop.verification_status == 'verified' %}<span class="badge bg-success">Verified</span>{% endif %}</h1>
+    <div class="text-muted small">{{ shop.location }} · {{ offers|length }} products</div></div>
+  {% if current_user and current_user.role == 'customer' %}
+    {% if has_endpoint('cart.toggle_saved') %}<form method="post" action="{{ url_for('cart.toggle_saved') }}"><input type="hidden" name="kind" value="shop"><input type="hidden" name="target_id" value="{{ shop.id }}"><button class="btn btn-outline-secondary btn-sm"><i class="bi bi-heart"></i> Save shop</button></form>{% endif %}
+    {% if has_endpoint('chat.start') %}<form method="post" action="{{ url_for('chat.start') }}"><input type="hidden" name="shop_id" value="{{ shop.id }}"><button class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-dots"></i> Chat</button></form>{% endif %}
+  {% endif %}
+</div></div>
+<div class="row g-2">{% for o in offers %}{{ offer_card(o) }}{% endfor %}</div>
+{% endblock %}

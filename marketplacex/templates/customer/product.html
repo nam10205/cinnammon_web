@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ product.title }} · MarketplaceX{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/">Home</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('catalog.category', category_id=product.category.id) }}">{{ product.category.name }}</a></li>
+<li class="breadcrumb-item active">{{ product.title }}</li></ol></nav>
+<div class="card"><div class="card-body"><div class="row g-4">
+  <div class="col-md-5"><img src="{{ product.image_url }}" alt="{{ product.title }}" class="img-fluid rounded border"></div>
+  <div class="col-md-7">
+    {% if product.status != 'active' %}<div class="alert alert-warning py-1">Listing status: {{ product.status }}</div>{% endif %}
+    <h1 class="h4">{{ product.title }}</h1>
+    <div class="text-muted mb-2"><i class="bi bi-star-fill text-warning"></i> {{ '%.1f'|format(offer.rating_avg) }} ({{ offer.rating_count }} reviews) · {{ '{:,}'.format(offer.sold_count) }} sold · Brand {{ product.brand }}</div>
+    <div class="p-3 bg-light rounded mb-3">
+      <span class="h3 price">{{ offer.price_vnd|vnd }}</span>
+      {% if offer.original_price_vnd and offer.original_price_vnd > offer.price_vnd %}
+        <s class="text-muted ms-2">{{ offer.original_price_vnd|vnd }}</s>
+        <span class="badge bg-danger ms-1">-{{ ((1 - offer.price_vnd / offer.original_price_vnd) * 100)|round|int }}%</span>
+        <div class="small text-muted">Discount basis: seller's previous price</div>
+      {% endif %}
+    </div>
+    <dl class="row small mb-2">
+      <dt class="col-4">Shop</dt><dd class="col-8"><a href="{{ url_for('catalog.shop', shop_id=product.shop.id) }}">{{ product.shop.name }}</a> · {{ product.shop.location }}</dd>
+      <dt class="col-4">Delivery</dt><dd class="col-8">{{ promise }}</dd>
+      <dt class="col-4">Stock</dt><dd class="col-8">{% if stock > 0 %}{{ stock }} available{% else %}<span class="text-danger">Out of stock</span>{% endif %}</dd>
+      {% for k, v in product.attributes.items() %}<dt class="col-4 text-capitalize">{{ k }}</dt><dd class="col-8">{{ v }}</dd>{% endfor %}
+    </dl>
+    {% if offers|length > 1 %}
+    <div class="mb-2">{% for o in offers %}<a class="btn btn-sm {{ 'btn-dark' if o.id == offer.id else 'btn-outline-dark' }} me-1" href="?variant={{ o.variant_id }}">{{ o.variant.name }}</a>{% endfor %}</div>
+    {% endif %}
+    {% if has_endpoint('cart.add') and (not current_user or current_user.role == 'customer') %}
+    <form method="post" action="{{ url_for('cart.add') }}" class="d-flex gap-2 align-items-end mb-2">
+      <input type="hidden" name="offer_id" value="{{ offer.id }}">
+      <div><label class="form-label small" for="qty">Quantity (max {{ offer.purchase_limit }})</label><input id="qty" class="form-control" name="qty" type="number" min="1" max="{{ offer.purchase_limit }}" value="1" style="width:6rem"></div>
+      <button class="btn btn-primary" {% if stock <= 0 %}disabled{% endif %}><i class="bi bi-cart-plus"></i> Add to cart</button>
+    </form>
+    {% endif %}
+    <div class="d-flex gap-2">
+    {% if current_user and current_user.role == 'customer' %}
+      {% if has_endpoint('cart.toggle_saved') %}<form method="post" action="{{ url_for('cart.toggle_saved') }}"><input type="hidden" name="kind" value="product"><input type="hidden" name="target_id" value="{{ product.id }}"><button class="btn btn-outline-secondary btn-sm"><i class="bi bi-heart"></i> Save</button></form>{% endif %}
+      {% if has_endpoint('chat.start') %}<form method="post" action="{{ url_for('chat.start') }}"><input type="hidden" name="shop_id" value="{{ product.shop.id }}"><button class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-dots"></i> Chat with seller</button></form>{% endif %}
+    {% endif %}
+    </div>
+  </div>
+</div>
+<hr><h2 class="h6">Description</h2><p>{{ product.description }}</p>
+<h2 class="h6">Reviews</h2>
+{% for r in reviews %}
+  <div class="border-bottom py-2"><strong>{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</strong> <span class="text-muted small">{{ r.customer.name }} · verified purchase</span><div>{{ r.comment }}</div>
+  {% if r.seller_reply %}<div class="small bg-light p-2 mt-1 rounded"><strong>Seller:</strong> {{ r.seller_reply }}</div>{% endif %}</div>
+{% else %}<p class="text-muted small">No reviews yet.</p>{% endfor %}
+</div></div>
+{% endblock %}

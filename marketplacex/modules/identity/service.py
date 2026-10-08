@@ -13,7 +13,9 @@ from .models import Address, PasswordResetToken, User
 
 def hash_password(pw: str) -> str:
     # pbkdf2: the system Python's hashlib lacks scrypt (werkzeug's default).
-    return generate_password_hash(pw, method="pbkdf2:sha256")
+    from flask import current_app
+    method = "pbkdf2:sha256:1000" if current_app.testing else "pbkdf2:sha256"
+    return generate_password_hash(pw, method=method)
 
 
 def register(email: str, password: str, name: str) -> User:
