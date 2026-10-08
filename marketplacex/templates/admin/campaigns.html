@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}{% include "admin/_nav.html" %}
+<div class="row g-4">
+<div class="col-lg-8">
+{% for c in campaigns %}
+<div class="card mb-3"><div class="card-body">
+  <form method="post" class="d-flex flex-wrap gap-2 align-items-center"><input type="hidden" name="id" value="{{ c.id }}">
+    <input class="form-control form-control-sm" name="name" value="{{ c.name }}" style="max-width:180px" aria-label="Name">
+    <input class="form-control form-control-sm" name="budget_vnd" value="{{ c.budget_vnd }}" style="max-width:130px" aria-label="Budget">
+    <select class="form-select form-select-sm" name="active" style="max-width:110px" aria-label="Active"><option value="1" {{ 'selected' if c.active }}>active</option><option value="0" {{ 'selected' if not c.active }}>paused</option></select>
+    <input class="form-control form-control-sm" name="reason" placeholder="Reason" required style="max-width:160px" aria-label="Reason"><button class="btn btn-sm btn-outline-primary">Save</button>
+    <span class="small text-muted">spent {{ c.spent_vnd|vnd }} of {{ c.budget_vnd|vnd }} · {{ c.starts_at|dt }} → {{ c.ends_at|dt }}</span></form>
+  <table class="table table-sm mt-2 mb-0"><thead><tr><th>Code</th><th>Rule</th><th>Scope</th><th>Used</th></tr></thead><tbody>
+  {% for v in c.vouchers %}<tr><td><code>{{ v.code }}</code></td><td>{{ v.describe() }}</td><td>{{ v.shop.name if v.shop else 'Platform' }}</td><td>{{ v.used_count }}/{{ v.usage_limit }}</td></tr>{% endfor %}</tbody></table>
+</div></div>
+{% endfor %}
+</div>
+<div class="col-lg-4">
+<form method="post" class="card card-body mb-3 vstack gap-2"><h2 class="h6">New campaign</h2><input class="form-control form-control-sm" name="name" placeholder="Name" required aria-label="Name"><input class="form-control form-control-sm" name="budget_vnd" placeholder="Budget ₫" required aria-label="Budget"><input class="form-control form-control-sm" name="days" placeholder="Duration (days)" value="7" aria-label="Days"><input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm btn-primary">Create campaign</button></form>
+<form method="post" class="card card-body vstack gap-2"><h2 class="h6">New voucher</h2><input type="hidden" name="action" value="voucher">
+  <select class="form-select form-select-sm" name="campaign_id" aria-label="Campaign">{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+  <input class="form-control form-control-sm" name="code" placeholder="CODE" required aria-label="Code">
+  <select class="form-select form-select-sm" name="kind" aria-label="Type"><option value="percent">percent</option><option value="fixed">fixed</option><option value="free_shipping">free shipping</option></select>
+  <input class="form-control form-control-sm" name="value" placeholder="Value (% or ₫)" aria-label="Value"><input class="form-control form-control-sm" name="min_spend_vnd" placeholder="Min spend ₫" aria-label="Min spend"><input class="form-control form-control-sm" name="max_discount_vnd" placeholder="Max discount ₫ (optional)" aria-label="Max discount"><input class="form-control form-control-sm" name="usage_limit" placeholder="Usage limit" value="100" aria-label="Usage limit">
+  <select class="form-select form-select-sm" name="shop_id" aria-label="Shop"><option value="">Platform voucher</option>{% for s in shops %}<option value="{{ s.id }}">{{ s.name }} only</option>{% endfor %}</select>
+  <input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm btn-primary">Create voucher</button></form>
+</div></div>
+{% endblock %}

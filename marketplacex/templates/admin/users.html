@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block content %}{% include "admin/_nav.html" %}
+<table class="table table-sm bg-white align-middle"><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>
+{% for u in users %}<tr><td>{{ u.name }}<div class="small text-muted">{{ u.email }}</div></td><td>{{ u.role }}</td><td>{{ status_badge(u.status) }}</td>
+<td>{% if u.id != current_user.id %}<form method="post" class="d-flex gap-1"><input type="hidden" name="id" value="{{ u.id }}"><input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm {{ 'btn-outline-success' if u.status == 'suspended' else 'btn-outline-danger' }}" name="suspend" value="{{ '0' if u.status == 'suspended' else '1' }}">{{ 'Reinstate' if u.status == 'suspended' else 'Suspend' }}</button></form>{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

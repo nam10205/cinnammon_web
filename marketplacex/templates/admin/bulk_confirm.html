@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}{% include "admin/_nav.html" %}
+<div class="card card-body" style="max-width:640px"><h2 class="h6">Confirm bulk {{ 'approval' if approve == '1' else 'rejection' }} of {{ products|length }} listing(s)</h2>
+<ul>{% for p in products %}<li>{{ p.title }} — {{ p.shop.name }}</li>{% endfor %}</ul>
+<form method="post"><input type="hidden" name="kind" value="bulk"><input type="hidden" name="confirm" value="1"><input type="hidden" name="approve" value="{{ approve }}"><input type="hidden" name="reason" value="{{ reason }}">
+{% for p in products %}<input type="hidden" name="ids" value="{{ p.id }}">{% endfor %}<p class="small">Reason: {{ reason }}</p><button class="btn btn-primary">Run bulk job</button> <a href="{{ url_for('admin.moderation') }}" class="btn btn-link">Cancel</a></form></div>
+{% endblock %}

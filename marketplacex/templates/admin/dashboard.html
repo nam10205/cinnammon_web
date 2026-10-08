@@ -1,2 +1,17 @@
 {% extends "base.html" %}
-{% block content %}<h1 class="h4">Admin Portal</h1>{% endblock %}
+{% block content %}{% include "admin/_nav.html" %}
+<p class="small text-muted">Operational report (report §4.5). Demo clock offset: +{{ r.clock_offset_h }} h.</p>
+<div class="row g-3 mb-3">
+  {% set total = r.orders_by_status.values()|sum %}
+  {% for label, v in [('Orders', total), ('Avg paid → packed (h)', r.paid_to_packed_h if r.paid_to_packed_h is not none else '—'), ('Zero-result search rate', '%.1f%%'|format(r.zero_result_rate * 100)), ('Notification failure rate', '%.1f%%'|format(r.notification_failure_rate * 100)), ('Open refund cases', r.refund_aging|length), ('Payment mismatches', r.payment_mismatches|length), ('Oversell cancellations', r.oversell)] %}
+  <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-muted">{{ label }}</div><div class="stat">{{ v }}</div></div></div>
+  {% endfor %}
+</div>
+<div class="row g-3">
+  <div class="col-md-4"><div class="card"><div class="card-header bg-white">Orders by status</div><ul class="list-group list-group-flush">{% for s, n in r.orders_by_status.items()|sort %}<li class="list-group-item d-flex justify-content-between"><span>{{ s }}</span><span>{{ n }}</span></li>{% else %}<li class="list-group-item text-muted">No orders</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-header bg-white">Cancellation attribution</div><ul class="list-group list-group-flush">{% for s, n in r.cancellations.items() %}<li class="list-group-item d-flex justify-content-between"><span>{{ s }}</span><span>{{ n }}</span></li>{% else %}<li class="list-group-item text-muted">None</li>{% endfor %}</ul></div>
+    <div class="card mt-3"><div class="card-header bg-white">Refund aging</div><ul class="list-group list-group-flush">{% for c in r.refund_aging %}<li class="list-group-item d-flex justify-content-between"><span>Case #{{ c.case_id }} · {{ c.status }}</span><span>{{ c.age_hours }} h</span></li>{% else %}<li class="list-group-item text-muted">None open</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-header bg-white">Payment reconciliation</div><ul class="list-group list-group-flush">{% for m in r.payment_mismatches %}<li class="list-group-item text-danger small">{{ m }}</li>{% else %}<li class="list-group-item text-success">All captured payments match orders</li>{% endfor %}</ul></div>
+    <div class="card mt-3"><div class="card-header bg-white">Domain events published</div><ul class="list-group list-group-flush small">{% for n, c in r.events.items()|sort %}<li class="list-group-item d-flex justify-content-between"><span>{{ n }}</span><span>{{ c }}</span></li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block content %}{% include "admin/_nav.html" %}
+<h2 class="h6">Listings pending moderation</h2>
+<form method="post" id="bulk"><input type="hidden" name="kind" value="bulk"></form>
+<table class="table table-sm bg-white align-middle"><thead><tr><th></th><th>Listing</th><th>Shop</th><th>Category / attributes</th><th>Decision</th></tr></thead><tbody>
+{% for p in pending %}<tr><td><input class="form-check-input" type="checkbox" name="ids" value="{{ p.id }}" form="bulk" aria-label="Select {{ p.title }}"></td>
+<td><a href="{{ url_for('catalog.product', product_id=p.id) }}">{{ p.title }}</a><div class="small text-muted">{{ p.description }}</div></td><td>{{ p.shop.name }}</td><td class="small">{{ p.category.name }} · {{ p.attributes }}</td>
+<td><form method="post" class="d-flex gap-1"><input type="hidden" name="kind" value="listing"><input type="hidden" name="id" value="{{ p.id }}"><input class="form-control form-control-sm" name="reason" placeholder="Reason code" required aria-label="Reason"><button class="btn btn-sm btn-success" name="approve" value="1">Approve</button><button class="btn btn-sm btn-outline-danger" name="approve" value="0">Reject</button></form></td></tr>
+{% else %}<tr><td colspan="5" class="text-muted">Queue is empty.</td></tr>{% endfor %}</tbody></table>
+{% if pending %}<div class="d-flex gap-2 mb-4"><input class="form-control form-control-sm" name="reason" form="bulk" placeholder="Bulk reason" required style="max-width:240px" aria-label="Bulk reason"><button class="btn btn-sm btn-outline-success" form="bulk" name="approve" value="1">Bulk approve…</button><button class="btn btn-sm btn-outline-danger" form="bulk" name="approve" value="0">Bulk reject…</button></div>{% endif %}
+
+<h2 class="h6">Shop verification requests</h2>
+<ul class="list-group mb-4">{% for s in shops %}<li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2"><span><strong>{{ s.name }}</strong> · {{ s.location }} · {{ s.owner.name }}<br><small>{{ s.verification_info }}</small></span>
+<form method="post" class="d-flex gap-1"><input type="hidden" name="kind" value="shop"><input type="hidden" name="id" value="{{ s.id }}"><input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm btn-success" name="approve" value="1">Verify</button><button class="btn btn-sm btn-outline-danger" name="approve" value="0">Reject</button></form></li>
+{% else %}<li class="list-group-item text-muted">No pending requests.</li>{% endfor %}</ul>
+
+<h2 class="h6">Reported / low-rated reviews</h2>
+<ul class="list-group mb-4">{% for r in reviews %}<li class="list-group-item d-flex flex-wrap justify-content-between gap-2"><span>{{ '★' * r.rating }} “{{ r.comment }}” — {{ r.customer.name }} {{ status_badge(r.status) }}</span>
+<form method="post" class="d-flex gap-1"><input type="hidden" name="kind" value="review"><input type="hidden" name="id" value="{{ r.id }}"><input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm btn-outline-danger" name="hide" value="{{ '0' if r.status == 'hidden' else '1' }}">{{ 'Unhide' if r.status == 'hidden' else 'Hide' }}</button></form></li>
+{% else %}<li class="list-group-item text-muted">No reported reviews.</li>{% endfor %}</ul>
+
+<h2 class="h6">Active listings</h2>
+<table class="table table-sm bg-white"><tbody>{% for p in active %}<tr><td>{{ p.title }}</td><td>{{ p.shop.name }}</td><td><form method="post" class="d-flex gap-1"><input type="hidden" name="kind" value="suspend_listing"><input type="hidden" name="id" value="{{ p.id }}"><input class="form-control form-control-sm" name="reason" placeholder="Reason" required aria-label="Reason"><button class="btn btn-sm btn-outline-dark">Suspend</button></form></td></tr>{% endfor %}</tbody></table>
+{% endblock %}
