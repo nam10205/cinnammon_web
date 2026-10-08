@@ -194,6 +194,17 @@ def seed_risk() -> None:
     checkout.place_order(alice, g.id, uuid.uuid4().hex, g.quote_hash)
 
 
+def seed_chat() -> None:
+    from .modules.chat import service as chat
+    from .modules.identity.models import User
+    from .modules.seller.models import Shop
+    alice = User.query.filter_by(email="alice@demo").one()
+    shop = Shop.query.filter_by(name="SportZone").one()
+    c = chat.get_or_create(alice, shop.id)
+    chat.send(alice, c.id, "Hi! Do the Nike Air Zoom run true to size?")
+    chat.send(shop.owner, c.id, "Hello Alice, yes they do. Size 42 fits most customers who wear 42 normally.")
+
+
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
