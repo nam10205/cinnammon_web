@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block content %}{% include "seller/_nav.html" %}
+<a class="btn btn-primary btn-sm mb-2" href="{{ url_for('seller.product_new') }}"><i class="bi bi-plus"></i> New listing</a>
+<table class="table table-sm bg-white align-middle"><thead><tr><th>Product</th><th>Category</th><th>Variants</th><th>Status</th><th></th></tr></thead>
+<tbody>{% for p in products %}<tr><td><a href="{{ url_for('catalog.product', product_id=p.id) }}">{{ p.title }}</a></td><td>{{ p.category.name }}</td><td>{{ p.variants|length }}</td>
+<td>{{ status_badge(p.status) }}{% if p.moderation_reason and p.status in ('rejected','suspended') %}<div class="small text-danger">{{ p.moderation_reason }}</div>{% endif %}</td>
+<td><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('seller.product_edit', product_id=p.id) }}">Edit</a></td></tr>
+{% else %}<tr><td colspan="5" class="text-muted">No listings yet.</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

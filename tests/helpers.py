@@ -115,3 +115,17 @@ def disputed_case(customer, key="P03"):
     returns.seller_respond(_owner_of(o), c.id, "reject", "item is genuine")
     returns.escalate(customer, c.id, "photos attached")
     return c
+
+
+def valid_listing_data():
+    return {"category_id": cat("Shoes").id, "title": "Trail Runner Pro", "brand": "SportZone",
+            "description": "Grippy trail running shoes", "attributes": {"size": "41", "color": "green"},
+            "variants": [{"name": "Size 41", "price_vnd": 1200000, "original_price_vnd": None, "stock": 10,
+                          "purchase_limit": 3},
+                         {"name": "Size 42", "price_vnd": 1250000, "original_price_vnd": 1400000, "stock": 5,
+                          "purchase_limit": 3}]}
+
+
+def pending_product():
+    from marketplacex.modules.catalog.models import Product
+    return Product.query.filter_by(status="pending").first()

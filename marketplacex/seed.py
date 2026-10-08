@@ -167,10 +167,22 @@ def seed_demo_orders() -> None:
     _ship(_buy(alice, "P03", 1), deliver=True)
 
 
+def seed_listings() -> None:
+    """A listing waiting in the moderation queue (contains a prohibited term)."""
+    from .modules.catalog import service as catalog
+    from .modules.catalog.models import Category
+    from .modules.seller.models import Shop
+    catalog.create_product(Shop.query.filter_by(name="SportZone").one(), Category.query.filter_by(name="Shoes").one(),
+                           "Replica Running Shoes", "NoBrand", "Looks just like the famous brand.",
+                           {"size": "42", "color": "red"},
+                           [{"name": "Default", "price_vnd": 350000, "stock": 20, "purchase_limit": 5}],
+                           image_url="/static/sample_images/placeholder.svg", status="pending")
+
+
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
-    for fn in ("seed_promotions",):
+    for fn in ("seed_promotions", "seed_listings"):
         f = globals().get(fn)
         if f:
             f()

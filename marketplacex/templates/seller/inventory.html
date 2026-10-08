@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}{% include "seller/_nav.html" %}
+<table class="table table-sm bg-white align-middle"><thead><tr><th>Product / variant</th><th>Price</th><th>Original</th><th>Available</th><th>Reserved</th><th>Committed</th><th>Limit</th><th></th></tr></thead><tbody>
+{% for o in offers %}{% set l = ledgers[o.id] %}
+<tr><form method="post" action="{{ url_for('seller.inventory_update', offer_id=o.id) }}"><input type="hidden" name="version" value="{{ o.version }}">
+  <td>{{ o.product.title }} <small class="text-muted">{{ o.variant.name }} · {{ o.product.status }}</small></td>
+  <td><input class="form-control form-control-sm" name="price_vnd" value="{{ o.price_vnd }}" style="width:8rem" aria-label="Price"></td>
+  <td><input class="form-control form-control-sm" name="original_price_vnd" value="{{ o.original_price_vnd or '' }}" style="width:8rem" aria-label="Original price"></td>
+  <td><input class="form-control form-control-sm" name="stock" value="{{ l.available }}" style="width:5rem" aria-label="Available stock"></td>
+  <td>{{ l.reserved }}</td><td>{{ l.committed }}</td>
+  <td><input class="form-control form-control-sm" name="purchase_limit" value="{{ o.purchase_limit }}" style="width:4rem" aria-label="Purchase limit"></td>
+  <td><button class="btn btn-sm btn-outline-primary">Save</button></td></form></tr>
+{% endfor %}</tbody></table>
+{% endblock %}
