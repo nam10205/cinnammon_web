@@ -101,3 +101,17 @@ def delivered_order(customer, key, qty=1):
     while o.status != "Delivered":
         logistics.advance(sh)
     return o
+
+
+def c_return_shipment(case):
+    from marketplacex.modules.logistics.models import Shipment
+    return Shipment.query.filter_by(return_case_id=case.id, kind="return").one()
+
+
+def disputed_case(customer, key="P03"):
+    from marketplacex.modules.returns import service as returns
+    o = delivered_order(customer, key)
+    c = returns.open_case(customer, o.id, {o.items[0].id: 1}, "not as described", "refund_only", "looks fake")
+    returns.seller_respond(_owner_of(o), c.id, "reject", "item is genuine")
+    returns.escalate(customer, c.id, "photos attached")
+    return c

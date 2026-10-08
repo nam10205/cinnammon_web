@@ -5,7 +5,7 @@
   <form method="post" action="{{ url_for('seller.switch_shop') }}" class="d-flex gap-1"><select name="shop_id" class="form-select form-select-sm" aria-label="Switch shop">{% for s in seller_shops %}<option value="{{ s.id }}" {{ 'selected' if seller_shop and s.id == seller_shop.id }}>{{ s.name }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-secondary">Switch</button></form>
   {% endif %}
   <nav class="nav nav-pills small ms-auto">
-    {% for ep, label in [('seller.dashboard','Dashboard'),('seller.orders','Orders'),('seller.products','Listings'),('seller.inventory','Inventory & price'),('seller.returns','Returns'),('review.seller_reviews','Reviews'),('seller.settlement','Settlement'),('seller.shop_profile','Shop profile')] %}
+    {% for ep, label in [('seller.dashboard','Dashboard'),('seller.orders','Orders'),('seller.products','Listings'),('seller.inventory','Inventory & price'),('returns.seller_list','Returns'),('review.seller_reviews','Reviews'),('seller.settlement','Settlement'),('seller.shop_profile','Shop profile')] %}
       {% if has_endpoint(ep) %}<a class="nav-link {{ 'active' if request.endpoint == ep }}" href="{{ url_for(ep) }}">{{ label }}</a>{% endif %}
     {% endfor %}
   </nav>

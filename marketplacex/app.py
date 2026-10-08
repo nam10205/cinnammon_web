@@ -56,6 +56,7 @@ def _register_helpers(app: Flask) -> None:
     @app.before_request
     def _correlation():
         g.correlation_id = uuid.uuid4().hex
+        g.pop("current_user", None)
 
     @app.template_filter("vnd")
     def vnd(v):

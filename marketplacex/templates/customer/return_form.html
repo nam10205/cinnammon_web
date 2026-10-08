@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4">Request return / refund — order #{{ o.id }}</h1>
+<form method="post" enctype="multipart/form-data" class="card card-body" style="max-width:640px">
+  <h2 class="h6">Items</h2>
+  {% for it in o.items %}<div class="d-flex align-items-center gap-2 mb-2"><label for="q{{ it.id }}" class="flex-grow-1">{{ it.title_snapshot }} (bought {{ it.qty }})</label><input class="form-control form-control-sm" style="width:5rem" id="q{{ it.id }}" name="qty_{{ it.id }}" type="number" min="0" max="{{ it.qty }}" value="{{ it.qty }}"></div>{% endfor %}
+  <label class="form-label" for="reason">Reason</label>
+  <select class="form-select mb-2" id="reason" name="reason" required>{% for r in ['Damaged item', 'Wrong item', 'Not as described', 'Size does not fit', 'Suspected counterfeit', 'Changed my mind'] %}<option>{{ r }}</option>{% endfor %}</select>
+  <fieldset class="mb-2"><legend class="form-label fs-6">Requested remedy</legend>
+    <label class="form-check"><input class="form-check-input" type="radio" name="remedy" value="refund_only" checked> Refund only (keep item)</label>
+    <label class="form-check"><input class="form-check-input" type="radio" name="remedy" value="return_and_refund"> Return item and refund</label>
+  </fieldset>
+  <label class="form-label" for="statement">Your statement</label>
+  <textarea class="form-control mb-2" id="statement" name="statement" rows="3" required></textarea>
+  <label class="form-label" for="evidence">Photo evidence (PNG/JPEG, max 2 MB)</label>
+  <input class="form-control mb-3" id="evidence" name="evidence" type="file" accept="image/png,image/jpeg">
+  <button class="btn btn-primary">Submit request</button>
+</form>
+{% endblock %}

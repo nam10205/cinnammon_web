@@ -1,0 +1,9 @@
+{% from "_macros.html" import status_badge %}
+<div class="card mb-3"><div class="card-header bg-white">Case timeline (immutable)</div><div class="card-body"><ul class="timeline mb-0">
+{% for e in c.evidence %}
+  <li><span class="small text-muted">{{ e.at|dt }} · {{ e.author.name if e.author else 'System' }}{% if e.author %} ({{ e.author.role }}){% endif %}</span><br>
+  {% if e.kind == 'image' %}<a href="{{ e.content }}" target="_blank"><img src="{{ e.content }}" alt="Evidence image" style="max-height:120px" class="border rounded"></a>
+  {% elif e.kind == 'system' %}<em>{{ e.content }}</em>{% else %}“{{ e.content }}”{% endif %}</li>
+{% endfor %}
+{% if c.decision %}<li><strong>Platform decision:</strong> {{ c.decision.outcome }} · {{ c.decision.reason_code }}{% if c.decision.amount_vnd %} · {{ c.decision.amount_vnd|vnd }}{% endif %} <span class="small text-muted">{{ c.decision.at|dt }} by {{ c.decision.agent.name }}</span>{% if c.decision.note %}<div class="small">{{ c.decision.note }}</div>{% endif %}</li>{% endif %}
+</ul></div></div>

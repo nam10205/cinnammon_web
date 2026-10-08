@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}{% include "seller/_nav.html" %}
+<div class="row g-4">
+  <div class="col-lg-7">{% include "_case_summary.html" %}{% include "_case_timeline.html" %}</div>
+  <div class="col-lg-5">
+    {% if c.status == 'requested' %}
+    <div class="card mb-3"><div class="card-body"><h3 class="h6">Respond before {{ c.seller_deadline|dt }}</h3>
+      <form method="post" action="{{ url_for('returns.seller_action', case_id=c.id, action='respond') }}" class="vstack gap-2">
+        <select class="form-select form-select-sm" name="decision" aria-label="Decision"><option value="accept">Accept</option><option value="propose">Propose partial refund</option><option value="reject">Reject</option></select>
+        <input class="form-control form-control-sm" name="amount_vnd" type="number" min="1" max="{{ amount }}" placeholder="Proposed amount (₫) — for proposals" aria-label="Proposed amount">
+        <input class="form-control form-control-sm" name="reason" placeholder="Reason / message to customer" aria-label="Reason" required>
+        <button class="btn btn-primary btn-sm">Submit response</button></form></div></div>
+    {% elif c.status == 'inspecting' %}
+    <div class="card mb-3"><div class="card-body"><h3 class="h6">Inspect returned item</h3>
+      <form method="post" action="{{ url_for('returns.seller_action', case_id=c.id, action='inspect') }}" class="vstack gap-2">
+        <input class="form-control form-control-sm" name="note" placeholder="Inspection note" aria-label="Inspection note">
+        <div class="d-flex gap-2"><button class="btn btn-success btn-sm" name="passed" value="1">Passed — refund</button><button class="btn btn-outline-danger btn-sm" name="passed" value="0">Failed</button></div></form></div></div>
+    {% elif c.status == 'awaiting_return' %}<div class="alert alert-info">Waiting for the return parcel. Use the carrier simulator on the <a href="{{ url_for('seller.order_detail', order_id=c.order_id) }}">order page</a>.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

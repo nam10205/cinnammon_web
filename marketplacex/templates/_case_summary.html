@@ -1,0 +1,14 @@
+{% from "_macros.html" import status_badge %}
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">Return case #{{ c.id }} {{ status_badge(c.status) }}</h2>
+  <div class="small text-muted">Order #{{ c.order_id }} · {{ c.order.shop.name }} · opened {{ c.created_at|dt }} · seller deadline {{ c.seller_deadline|dt }}</div>
+  <dl class="row small mt-2 mb-0">
+    <dt class="col-4">Reason</dt><dd class="col-8">{{ c.reason }}</dd>
+    <dt class="col-4">Remedy</dt><dd class="col-8">{{ c.remedy|replace('_', ' ') }}</dd>
+    <dt class="col-4">Items</dt><dd class="col-8">{% for ci in c.items %}{{ ci.order_item.title_snapshot }} × {{ ci.qty }}<br>{% endfor %}</dd>
+    <dt class="col-4">Refundable</dt><dd class="col-8">{{ amount|vnd }} <span class="text-muted">(captured payment, discounts, quantity and prior refunds)</span></dd>
+    {% if c.proposed_amount_vnd %}<dt class="col-4">Seller proposal</dt><dd class="col-8">{{ c.proposed_amount_vnd|vnd }}</dd>{% endif %}
+    {% if c.inspection_result %}<dt class="col-4">Inspection</dt><dd class="col-8">{{ c.inspection_result }}</dd>{% endif %}
+    {% if c.refund_amount_vnd %}<dt class="col-4">Refunded</dt><dd class="col-8 text-success">{{ c.refund_amount_vnd|vnd }}</dd>{% endif %}
+  </dl>
+</div></div>
