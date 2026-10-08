@@ -179,6 +179,21 @@ def seed_listings() -> None:
                            image_url="/static/sample_images/placeholder.svg", status="pending")
 
 
+def seed_risk() -> None:
+    """A high-value checkout held for risk review."""
+    import uuid
+
+    from .modules.cart import service as cart
+    from .modules.catalog.models import Product
+    from .modules.checkout import service as checkout
+    from .modules.identity.models import User
+    alice = User.query.filter_by(email="alice@demo").one()
+    p = Product.query.filter_by(title=SEED_KEYS["P05"]).one()
+    cart.add_item(alice, p.variants[0].offer.id, 4)
+    g = checkout.quote(alice, alice.addresses[0].id, [])
+    checkout.place_order(alice, g.id, uuid.uuid4().hex, g.quote_hash)
+
+
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
