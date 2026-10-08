@@ -104,7 +104,8 @@ def refundable_vnd(payment_id: int) -> int:
     return p.captured_vnd - refunded_vnd(payment_id)
 
 
-def refund(payment_id: int, amount_vnd: int, idempotency_key: str, return_case_id: int | None = None) -> Refund:
+def refund(payment_id: int, amount_vnd: int, idempotency_key: str, return_case_id: int | None = None,
+           order_id: int | None = None) -> Refund:
     existing = Refund.query.filter_by(idempotency_key=idempotency_key).first()
     if existing:
         return existing
@@ -121,7 +122,7 @@ def refund(payment_id: int, amount_vnd: int, idempotency_key: str, return_case_i
     db.session.add(r)
     db.session.flush()
     publish("PaymentChanged", p.group_id, {"kind": "refund", "group_id": p.group_id, "refund_id": r.id,
-                                           "return_case_id": return_case_id, "amount_vnd": amount_vnd,
+                                           "return_case_id": return_case_id, "order_id": order_id, "amount_vnd": amount_vnd,
                                            "status": "refunded"})
     db.session.commit()
     return r
