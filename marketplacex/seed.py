@@ -100,6 +100,24 @@ def seed_catalog() -> None:
             created_at=policy.now() - timedelta(days=age))
 
 
+def seed_promotions() -> None:
+    from .modules.promotion.models import Campaign, Voucher
+    from .modules.seller.models import Shop
+    now = policy.now()
+    c = Campaign(name="10.10 Sale", budget_vnd=10_000_000, starts_at=now - timedelta(days=1),
+                 ends_at=now + timedelta(days=30), active=True)
+    db.session.add(c)
+    db.session.flush()
+    sz = Shop.query.filter_by(name="SportZone").one()
+    db.session.add_all([
+        Voucher(campaign_id=c.id, code="SALE10", kind="percent", value=10, max_discount_vnd=100_000,
+                min_spend_vnd=0, usage_limit=1000),
+        Voucher(campaign_id=c.id, code="SPORT80", kind="fixed", value=80_000, min_spend_vnd=500_000,
+                shop_id=sz.id, usage_limit=500),
+    ])
+    db.session.commit()
+
+
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
