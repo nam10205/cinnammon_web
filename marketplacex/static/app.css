@@ -14,3 +14,5 @@ a { color: #c0391c; }
 .timeline li { margin-bottom: .6rem; list-style: none; }
 .stat { font-size: 1.6rem; font-weight: 600; }
 :focus-visible { outline: 3px solid #1f6feb; outline-offset: 2px; }
+.mx-nav .dropdown-menu .dropdown-item { color: #212529; }
+.mx-nav .dropdown-menu .dropdown-item:hover, .mx-nav .dropdown-menu .dropdown-item:focus { color: #000; background: #f1f1f1; }

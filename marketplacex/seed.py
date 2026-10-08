@@ -6,6 +6,7 @@ from datetime import timedelta
 from .extensions import db
 from .modules.admin import policy
 from .modules.admin.policy import ensure_defaults
+from .seed_bulk import prototype_photo, seed_bulk_catalog, seed_extra_customers  # noqa: F401
 
 DEMO_PASSWORD = "demo123"
 
@@ -96,7 +97,7 @@ def seed_catalog() -> None:
             shops[shop], cats[cat], title, brand, desc, attrs,
             [{"name": "Default", "price_vnd": price, "original_price_vnd": orig, "stock": 50, "purchase_limit": 5,
               "sold_count": sold, "rating_avg": rating}],
-            image_url=f"/static/sample_images/{key}.svg", image_vector=vec, status="active",
+            image_url=prototype_photo(key), image_vector=vec, status="active",
             created_at=policy.now() - timedelta(days=age))
 
 
@@ -120,6 +121,10 @@ def seed_promotions() -> None:
 
 def _buy(customer, key: str, qty: int = 1, codes=None):
     """Place and pay an order through the real checkout saga."""
+    return _buy_title(customer, SEED_KEYS[key], qty, codes)
+
+
+def _buy_title(customer, title: str, qty: int = 1, codes=None):
     import uuid
 
     from .modules.cart import service as cart
@@ -127,7 +132,7 @@ def _buy(customer, key: str, qty: int = 1, codes=None):
     from .modules.checkout import service as checkout
     from .modules.order import service as order_service
     from .modules.payment import service as payment
-    p = Product.query.filter_by(title=SEED_KEYS[key]).one()
+    p = Product.query.filter_by(title=title).first()
     cart.add_item(customer, p.variants[0].offer.id, qty)
     g = checkout.quote(customer, customer.addresses[0].id, codes or [])
     checkout.place_order(customer, g.id, uuid.uuid4().hex, g.quote_hash)
@@ -216,7 +221,8 @@ def seed_all_for_tests() -> None:
 
 def run() -> None:
     seed_catalog()
-    for fn in ("seed_promotions", "seed_listings", "seed_demo_orders", "seed_risk", "seed_chat"):
+    for fn in ("seed_promotions", "seed_bulk_catalog", "seed_listings", "seed_demo_orders", "seed_extra_customers",
+               "seed_risk", "seed_chat"):
         f = globals().get(fn)
         if f:
             f()

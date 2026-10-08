@@ -3,7 +3,7 @@
 <div class="col-6 col-md-4 col-lg-2">
   <a href="{{ url_for('catalog.product', product_id=p.id) }}" class="text-decoration-none text-dark">
     <div class="card h-100 product-card">
-      <img src="{{ p.image_url or url_for('static', filename='sample_images/placeholder.svg') }}" class="card-img-top" alt="{{ p.title }}">
+      <img src="{{ p.image_url or url_for('static', filename='sample_images/placeholder.svg') }}" class="card-img-top" alt="{{ p.title }}" loading="lazy" onerror="this.onerror=null;this.src='/static/sample_images/placeholder.svg'">
       <div class="card-body p-2">
         <div class="small text-truncate-2">{{ p.title }}</div>
         <div class="price">{{ o.price_vnd|vnd }}</div>

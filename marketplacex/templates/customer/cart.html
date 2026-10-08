@@ -12,7 +12,7 @@
         <input type="hidden" name="selected" value="{{ '0' if i.selected else '1' }}">
         <button class="btn btn-sm {{ 'btn-success' if i.selected else 'btn-outline-secondary' }}" aria-label="{{ 'Unselect' if i.selected else 'Select' }} {{ i.offer.product.title }}"><i class="bi bi-{{ 'check-square' if i.selected else 'square' }}"></i></button>
       </form>
-      <img src="{{ i.offer.product.image_url }}" width="56" height="56" alt="" class="rounded border">
+      <img src="{{ i.offer.product.image_url }}" width="56" height="56" alt="" class="rounded border" loading="lazy" onerror="this.onerror=null;this.src='/static/sample_images/placeholder.svg'">
       <div class="flex-grow-1"><a href="{{ url_for('catalog.product', product_id=i.offer.product.id) }}">{{ i.offer.product.title }}</a>
         <div class="small text-muted">{{ i.offer.variant.name }} · {{ i.offer.price_vnd|vnd }}{% if i.offer.product.status != 'active' %} · <span class="text-danger">unavailable</span>{% endif %}</div></div>
       <form method="post" action="{{ url_for('cart.change', offer_id=i.offer_id) }}" class="d-flex gap-1">

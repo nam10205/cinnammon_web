@@ -79,5 +79,7 @@ def test_all_main_pages_render_after_seed(client, app):
             assert r.status_code in (200, 302), (role, p, r.status_code)
     client.get("/logout")
     client.post("/demo-login/customer")
-    for o in Order.query.all():
+    for o in Order.query.filter_by(customer_id=alice_user().id).all():
         assert client.get(f"/orders/{o.id}").status_code == 200
+    for o in Order.query.filter(Order.customer_id != alice_user().id).all():
+        assert client.get(f"/orders/{o.id}").status_code == 404   # other customers' orders stay private

@@ -5,7 +5,7 @@
 <li class="breadcrumb-item"><a href="{{ url_for('catalog.category', category_id=product.category.id) }}">{{ product.category.name }}</a></li>
 <li class="breadcrumb-item active">{{ product.title }}</li></ol></nav>
 <div class="card"><div class="card-body"><div class="row g-4">
-  <div class="col-md-5"><img src="{{ product.image_url }}" alt="{{ product.title }}" class="img-fluid rounded border"></div>
+  <div class="col-md-5"><img src="{{ product.image_url }}" alt="{{ product.title }}" class="img-fluid rounded border" loading="lazy" onerror="this.onerror=null;this.src='/static/sample_images/placeholder.svg'"></div>
   <div class="col-md-7">
     {% if product.status != 'active' %}<div class="alert alert-warning py-1">Listing status: {{ product.status }}</div>{% endif %}
     <h1 class="h4">{{ product.title }}</h1>

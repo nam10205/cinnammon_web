@@ -21,10 +21,20 @@ python3 -m venv .venv
 | Actor | Email | Notes |
 |---|---|---|
 | Customer | alice@demo | Has orders in every state, an open return, a held high-value checkout and a chat |
-| Seller | sportzone@demo, techhub@demo, stylehouse@demo | One verified shop each |
+| Seller | sportzone@demo, techhub@demo, stylehouse@demo, gadgetpro@demo, homenest@demo, freshmart@demo, glowbeauty@demo, motoworld@demo | One verified shop each (the *seller* demo button logs in as SportZone) |
+| More customers | binh@demo, chi@demo, dung@demo | Delivered orders with verified-purchase reviews |
 | Administrator | admin@demo | Admin Portal, including demo clock and settlement controls |
 | Support Agent | support@demo | Support Console |
 | Risk Analyst | risk@demo | Risk Console |
+
+### Demo data
+
+- **207 products in 25 categories across 8 shops.**
+  - The report's 12 prototype products keep their prices, ratings and search vectors, so §13.1's results still reproduce.
+  - The other 194 come from a snapshot of [dummyjson.com/products](https://dummyjson.com/products), saved in `marketplacex/data/catalog.json` and loaded by `marketplacex/seed_bulk.py`. Their USD prices are converted at 25,000 ₫ per dollar.
+- **Product photos load online**, from cdn.dummyjson.com and Wikimedia Commons.
+  - Seeding works offline, but photos need internet. Without it, a placeholder image is shown.
+  - Image search uses the prototype's three sample photos, so it only returns the 12 prototype products.
 
 ## 5-minute demo script
 
