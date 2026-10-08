@@ -98,11 +98,8 @@ def compensate_order(order: Order, previous_status: str) -> None:
     offer_ids = [it.offer_id for it in order.items]
     if previous_status in ("Draft", "PendingPayment"):
         inventory.release(order.attempt_id, offer_ids)
-        siblings = orders_of_group(order.group_id)
-        if all(o.status in state_machine.TERMINAL for o in siblings):
-            p = payment.latest_for_group(order.group_id)
-            if p is not None and p.status == "pending":
-                payment.void(p.id)
+        from ..checkout import service as checkout
+        checkout.fail_if_all_orders_cancelled(order.group_id)
         return
     for it in order.items:
         inventory.return_committed(it.offer_id, it.qty)
@@ -110,7 +107,7 @@ def compensate_order(order: Order, previous_status: str) -> None:
     if p is not None:
         amount = min(order.total_vnd, payment.refundable_vnd(p.id))
         if amount > 0:
-            payment.refund(p.id, amount, f"cancel-{order.id}")
+            payment.refund(p.id, amount, f"cancel-{order.id}", order_id=order.id)
 
 
 def request_cancel(customer, order: Order, reason: str) -> Order:

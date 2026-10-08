@@ -164,7 +164,9 @@ def place_order(customer, group_id: int, idempotency_key: str, quote_hash: str) 
 
 def continue_after_risk(group: CheckoutGroup):
     group.failure_reason = None
-    p = payment.authorize(group.id, group.total_vnd, group.attempt_id)
+    live = [o for o in order_service.orders_of_group(group.id) if o.status == "PendingPayment"]
+    amount = sum(o.total_vnd for o in live) if live else group.total_vnd
+    p = payment.authorize(group.id, amount, group.attempt_id)
     db.session.commit()
     return p
 
@@ -203,20 +205,42 @@ def _on_payment_authorized(event) -> None:
         if p is not None:
             payment.refund(p.id, payment.refundable_vnd(p.id), f"late-capture-{g.id}")
         return
-    orders = order_service.orders_of_group(g.id)
-    for o in orders:
+    p = payment.captured_for_group(g.id)
+    live = [o for o in order_service.orders_of_group(g.id) if o.status == "PendingPayment"]
+    if not live:
+        # Every shop order was cancelled while payment was pending: refund everything.
+        if p is not None and payment.refundable_vnd(p.id) > 0:
+            payment.refund(p.id, payment.refundable_vnd(p.id), f"late-capture-{g.id}")
+        g.status, g.failure_reason = "failed", "All orders were cancelled"
+        db.session.commit()
+        return
+    for o in live:
         order_service.transition(o, "Confirmed", None, "Payment captured")
-    inventory.commit(g.attempt_id)
+    inventory.commit(g.attempt_id)  # cancelled orders' reservations were already released
     promo.commit(g.attempt_id, g.id)
-    for o in orders:
+    for o in live:
         for it in o.items:
             it.offer.sold_count += it.qty
     from ..identity.models import User
-    cart.remove_items(db.session.get(User, g.customer_id), [it.offer_id for o in orders for it in o.items])
+    cart.remove_items(db.session.get(User, g.customer_id), [it.offer_id for o in live for it in o.items])
     g.status = "completed"
-    for o in orders:
+    # Money captured for shop orders cancelled before payment goes back to the customer.
+    excess = (p.captured_vnd - sum(o.total_vnd for o in live) - payment.refunded_vnd(p.id)) if p else 0
+    if excess > 0:
+        payment.refund(p.id, excess, f"cancelled-orders-{g.id}")
+    for o in live:
         publish("OrderCreated", o.id, {"order_id": o.id, "customer_id": o.customer_id, "shop_id": o.shop_id})
     db.session.commit()
+
+
+def fail_if_all_orders_cancelled(group_id: int) -> None:
+    """Called when a shop order is cancelled during PendingPayment."""
+    g = db.session.get(CheckoutGroup, group_id)
+    if g is None or g.status not in ("placing", "quoted"):
+        return
+    if any(o.status not in ("Cancelled", "PaymentFailed") for o in order_service.orders_of_group(group_id)):
+        return
+    compensate(g, "All orders were cancelled by the customer")
 
 
 @subscribe("PaymentChanged", "checkout")

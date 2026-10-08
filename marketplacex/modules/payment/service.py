@@ -99,6 +99,11 @@ def refunded_vnd(payment_id: int) -> int:
         Refund.payment_id == payment_id, Refund.status == "succeeded").scalar()
 
 
+def refunded_for_order(order_id: int) -> int:
+    return db.session.query(func.coalesce(func.sum(Refund.amount_vnd), 0)).filter(
+        Refund.order_id == order_id, Refund.status == "succeeded").scalar()
+
+
 def refundable_vnd(payment_id: int) -> int:
     p = get_payment(payment_id)
     return p.captured_vnd - refunded_vnd(payment_id)
@@ -117,7 +122,7 @@ def refund(payment_id: int, amount_vnd: int, idempotency_key: str, return_case_i
         raise RefundExceedsCaptured(
             f"Refund {amount_vnd:,} ₫ exceeds refundable {refundable_vnd(payment_id):,} ₫")
     ref = provider().refund(p.provider_ref, amount_vnd, idempotency_key)
-    r = Refund(payment_id=p.id, return_case_id=return_case_id, amount_vnd=amount_vnd,
+    r = Refund(payment_id=p.id, return_case_id=return_case_id, order_id=order_id, amount_vnd=amount_vnd,
                idempotency_key=idempotency_key, status="succeeded", provider_ref=ref, created_at=policy.now())
     db.session.add(r)
     db.session.flush()

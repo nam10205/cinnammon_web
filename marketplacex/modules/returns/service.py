@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from flask import current_app
 
-from ...errors import IllegalTransition, NotEligible, NotFound, ValidationError
+from ...errors import IllegalTransition, NotEligible, NotFound, RefundExceedsCaptured, ValidationError
 from ...events import publish, subscribe
 from ...extensions import db
 from ..admin import policy
@@ -173,6 +173,10 @@ def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None, 
     p = payment.captured_for_group(case.order.group_id)
     if p is None:
         raise NotEligible("No captured payment to refund")
+    order_left = case.order.total_vnd - payment.refunded_for_order(case.order_id)
+    if amount > order_left:
+        # BR07 per order: never refund more than this shop order is worth.
+        raise RefundExceedsCaptured(f"Refund {amount:,} ₫ exceeds what remains on order #{case.order_id} ({order_left:,} ₫)")
     if not skip_risk:
         from ..risk import service as risk
         if risk.evaluate_refund(case.customer, case, amount) == "held":
@@ -180,14 +184,26 @@ def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None, 
             _set_status(case, "refund_pending", actor, "Refund held for risk review")
             db.session.commit()
             return None
-    r = payment.refund(p.id, amount, f"return-{case.id}", case.id)
+    r = payment.refund(p.id, amount, f"return-{case.id}", case.id, order_id=case.order_id)
     case.refund_amount_vnd = amount
     case.pending_amount_vnd = None
     _set_status(case, "refunded", actor, f"Refunded {amount:,} ₫ (ref {r.provider_ref})")
-    if case.order.status != "Refunded":
-        order_service.transition(case.order, "Refunded", actor, f"Return case #{case.id} refunded")
+    _settle_order(case.order, actor)
     db.session.commit()
     return r
+
+
+def _settle_order(order, actor) -> None:
+    """Move the order out of ReturnRequested only once every case on it is finished."""
+    if order.status != "ReturnRequested":
+        return
+    cases = cases_for_order(order.id)
+    if any(c.status in OPEN_STATUSES for c in cases):
+        return
+    if any(c.status == "refunded" for c in cases):
+        order_service.transition(order, "Refunded", actor, "All return cases resolved with a refund")
+    else:
+        order_service.transition(order, "Rejected", actor, "All return cases closed without a refund")
 
 
 def seller_respond(seller, case_id: int, action: str, reason: str, amount_vnd: int | None = None) -> ReturnCase:
@@ -277,8 +293,8 @@ def decide_dispute(agent, case_id: int, outcome: str, reason_code: str, amount_v
         raise ValidationError("Reason code is required")
     if outcome not in ("refund_customer", "side_with_seller", "partial"):
         raise ValidationError("Unknown outcome")
-    if outcome == "partial" and (not amount_vnd or int(amount_vnd) <= 0):
-        raise ValidationError("Partial refunds need an amount")
+    if outcome == "partial" and (not amount_vnd or not 0 < int(amount_vnd) <= refund_amount(c)):
+        raise ValidationError(f"Partial refunds must be between 1 and {refund_amount(c):,} ₫")
     d = DisputeDecision(case_id=c.id, decided_by=agent.id, reason_code=reason_code.strip(), outcome=outcome,
                         amount_vnd=int(amount_vnd) if amount_vnd else None, note=note, at=policy.now())
     db.session.add(d)
@@ -290,7 +306,7 @@ def decide_dispute(agent, case_id: int, outcome: str, reason_code: str, amount_v
         execute_refund(c, int(amount_vnd), actor=agent)
     else:
         _set_status(c, "closed", agent, f"Decision {reason_code}: seller upheld")
-        order_service.transition(c.order, "Rejected", agent, f"Dispute decided for seller ({reason_code})")
+        _settle_order(c.order, agent)
     db.session.commit()
     return d
 
@@ -298,5 +314,6 @@ def decide_dispute(agent, case_id: int, outcome: str, reason_code: str, amount_v
 def close_after_risk(case: ReturnCase, analyst, reason: str) -> ReturnCase:
     case.pending_amount_vnd = None
     _set_status(case, "closed", analyst, f"Refund rejected by risk review: {reason}")
+    _settle_order(case.order, analyst)
     db.session.commit()
     return case

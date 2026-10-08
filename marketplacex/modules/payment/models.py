@@ -18,6 +18,7 @@ class Refund(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     payment_id = db.Column(db.Integer, db.ForeignKey("payment_attempt.id"), nullable=False)
     return_case_id = db.Column(db.Integer)
+    order_id = db.Column(db.Integer, index=True)
     amount_vnd = db.Column(db.Integer, nullable=False)
     idempotency_key = db.Column(db.String(64), unique=True, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="pending")
