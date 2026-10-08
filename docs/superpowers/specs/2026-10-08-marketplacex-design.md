@@ -16,7 +16,7 @@ Source: `docs/marketplacex-analysis-design.docx` (Tran Quang Tien, "Shopee-like 
 
 ## 2. Stack and Architecture
 
-- Python 3.11+, Flask, Flask-SQLAlchemy, SQLite, Jinja templates, Bootstrap 5 via CDN, pytest.
+- Python 3.9+ (the machine has 3.9.6), Flask, Flask-SQLAlchemy, SQLite, Jinja templates, Bootstrap 5 via CDN, pytest.
 - **Modular monolith.** The report's §15 explicitly permits this as a first stage. Each service in Figure 2 is one module.
 
 ```
