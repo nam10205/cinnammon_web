@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4">My account</h1>
+<p>{{ user.name }} · {{ user.email }} · <span class="badge bg-secondary">{{ user.role }}</span></p>
+<div class="row g-4">
+  <div class="col-md-6">
+    <h2 class="h6">Addresses</h2>
+    <ul class="list-group mb-3">
+      {% for a in user.addresses %}<li class="list-group-item">{{ a.recipient }} · {{ a.phone }}<br><small>{{ a.line }}, {{ a.city }}</small> {% if a.is_default %}<span class="badge bg-success">default</span>{% endif %}</li>
+      {% else %}<li class="list-group-item text-muted">No addresses yet</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="col-md-6">
+    <h2 class="h6">Add address</h2>
+    <form method="post" action="{{ url_for('identity.add_address') }}" class="vstack gap-2">
+      <input class="form-control" name="recipient" placeholder="Recipient" aria-label="Recipient" required>
+      <input class="form-control" name="phone" placeholder="Phone" aria-label="Phone" required>
+      <input class="form-control" name="line" placeholder="Street address" aria-label="Street address" required>
+      <input class="form-control" name="city" placeholder="City" aria-label="City" required>
+      <label class="form-check"><input class="form-check-input" type="checkbox" name="is_default" value="1"> Default</label>
+      <button class="btn btn-primary">Save address</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Log in · MarketplaceX{% endblock %}
+{% block content %}
+<div class="row justify-content-center g-4">
+  <div class="col-md-5">
+    <div class="card shadow-sm"><div class="card-body">
+      <h1 class="h4 mb-3">Log in</h1>
+      <form method="post">
+        <div class="mb-2"><label class="form-label" for="email">Email</label><input class="form-control" id="email" name="email" type="email" required></div>
+        <div class="mb-3"><label class="form-label" for="password">Password</label><input class="form-control" id="password" name="password" type="password" required></div>
+        <button class="btn btn-primary w-100">Log in</button>
+      </form>
+      <div class="d-flex justify-content-between mt-3 small"><a href="{{ url_for('identity.forgot') }}">Forgot password?</a><a href="{{ url_for('identity.register') }}">Create account</a></div>
+    </div></div>
+  </div>
+  <div class="col-md-5">
+    <div class="card shadow-sm border-warning"><div class="card-body">
+      <h2 class="h5">Demo login</h2>
+      <p class="small text-muted">One click per actor in the use case diagram (password for all: <code>demo123</code>).</p>
+      {% for r in roles %}
+      <form method="post" action="{{ url_for('identity.demo_login', role=r) }}" class="d-inline"><button class="btn btn-outline-dark btn-sm m-1 text-capitalize">{{ r }}</button></form>
+      {% endfor %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
