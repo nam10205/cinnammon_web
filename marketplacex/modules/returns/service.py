@@ -168,7 +168,7 @@ def refund_amount(case: ReturnCase) -> int:
     return total
 
 
-def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None, skip_risk: bool = False):
+def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None):
     amount = refund_amount(case) if amount_vnd is None else int(amount_vnd)
     p = payment.captured_for_group(case.order.group_id)
     if p is None:
@@ -177,13 +177,6 @@ def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None, 
     if amount > order_left:
         # BR07 per order: never refund more than this shop order is worth.
         raise RefundExceedsCaptured(f"Refund {amount:,} ₫ exceeds what remains on order #{case.order_id} ({order_left:,} ₫)")
-    if not skip_risk:
-        from ..risk import service as risk
-        if risk.evaluate_refund(case.customer, case, amount) == "held":
-            case.pending_amount_vnd = amount
-            _set_status(case, "refund_pending", actor, "Refund held for risk review")
-            db.session.commit()
-            return None
     r = payment.refund(p.id, amount, f"return-{case.id}", case.id, order_id=case.order_id)
     case.refund_amount_vnd = amount
     case.pending_amount_vnd = None
@@ -309,11 +302,3 @@ def decide_dispute(agent, case_id: int, outcome: str, reason_code: str, amount_v
         _settle_order(c.order, agent)
     db.session.commit()
     return d
-
-
-def close_after_risk(case: ReturnCase, analyst, reason: str) -> ReturnCase:
-    case.pending_amount_vnd = None
-    _set_status(case, "closed", analyst, f"Refund rejected by risk review: {reason}")
-    _settle_order(case.order, analyst)
-    db.session.commit()
-    return case

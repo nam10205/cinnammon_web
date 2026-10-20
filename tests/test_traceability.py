@@ -10,7 +10,7 @@ USE_CASES = [
     "Chat with Seller", "Manage Shop", "Manage Listing", "Manage Inventory and Price", "Fulfil Order",
     "Create and Track Shipment", "Handle Return", "View Settlement", "Chat with Customer", "Manage Taxonomy",
     "Manage Campaign", "Configure Platform Policy", "Govern Users and Content", "View Operational Report",
-    "Manage Support Case", "Assist Dispute", "Review Risk Alert", "Hold or Release Transaction", "Process Payment",
+    "Manage Support Case", "Assist Dispute", "Process Payment",
 ]
 
 

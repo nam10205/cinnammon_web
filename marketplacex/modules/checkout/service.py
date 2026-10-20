@@ -1,4 +1,4 @@
-"""Checkout saga (report §9.2): quote -> place_order -> reserve -> risk -> authorize -> orders, with compensation."""
+"""Checkout saga (report §9.2): quote -> place_order -> reserve -> authorize -> orders, with compensation."""
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +19,6 @@ from ..logistics import service as logistics
 from ..order import service as order_service
 from ..payment import service as payment
 from ..promotion import service as promo
-from ..risk import service as risk
 from .models import CheckoutGroup
 
 
@@ -150,25 +149,16 @@ def place_order(customer, group_id: int, idempotency_key: str, quote_hash: str) 
         inventory.reserve(items, g.attempt_id, ttl)
         promo.reserve(customer, g.quote_payload["applied"], g.attempt_id, ttl)
         order_service.create_orders(g, g.quote_payload["shops"], address, customer)
-        if risk.evaluate_checkout(customer, g) == "held":
-            g.failure_reason = "Under risk review"
-            db.session.commit()
-        else:
-            continue_after_risk(g)
+        g.failure_reason = None
+        live = [o for o in order_service.orders_of_group(g.id) if o.status == "PendingPayment"]
+        amount = sum(o.total_vnd for o in live) if live else g.total_vnd
+        payment.authorize(g.id, amount, g.attempt_id)
+        db.session.commit()
     except DomainError as e:
         db.session.rollback()
         compensate(g, e.message)
         raise
     return g
-
-
-def continue_after_risk(group: CheckoutGroup):
-    group.failure_reason = None
-    live = [o for o in order_service.orders_of_group(group.id) if o.status == "PendingPayment"]
-    amount = sum(o.total_vnd for o in live) if live else group.total_vnd
-    p = payment.authorize(group.id, amount, group.attempt_id)
-    db.session.commit()
-    return p
 
 
 def compensate(group: CheckoutGroup, reason: str, payment_failed: bool = False) -> None:

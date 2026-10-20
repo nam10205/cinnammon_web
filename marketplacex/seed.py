@@ -17,7 +17,6 @@ USERS = [
     ("stylehouse@demo", "StyleHouse Owner", "seller", "0901000003"),
     ("admin@demo", "Platform Admin", "admin", "0900000000"),
     ("support@demo", "Support Agent", "support", "0900000001"),
-    ("risk@demo", "Risk Analyst", "risk", "0900000002"),
 ]
 
 SHOPS = [("SportZone", "sportzone@demo", "Hanoi"), ("TechHub", "techhub@demo", "Ho Chi Minh City"),
@@ -184,21 +183,6 @@ def seed_listings() -> None:
                            image_url="/static/sample_images/placeholder.svg", status="pending")
 
 
-def seed_risk() -> None:
-    """A high-value checkout held for risk review."""
-    import uuid
-
-    from .modules.cart import service as cart
-    from .modules.catalog.models import Product
-    from .modules.checkout import service as checkout
-    from .modules.identity.models import User
-    alice = User.query.filter_by(email="alice@demo").one()
-    p = Product.query.filter_by(title=SEED_KEYS["P05"]).one()
-    cart.add_item(alice, p.variants[0].offer.id, 4)
-    g = checkout.quote(alice, alice.addresses[0].id, [])
-    checkout.place_order(alice, g.id, uuid.uuid4().hex, g.quote_hash)
-
-
 def seed_chat() -> None:
     from .modules.chat import service as chat
     from .modules.identity.models import User
@@ -222,7 +206,7 @@ def seed_all_for_tests() -> None:
 def run() -> None:
     seed_catalog()
     for fn in ("seed_promotions", "seed_bulk_catalog", "seed_listings", "seed_demo_orders", "seed_extra_customers",
-               "seed_risk", "seed_chat"):
+               "seed_chat"):
         f = globals().get(fn)
         if f:
             f()

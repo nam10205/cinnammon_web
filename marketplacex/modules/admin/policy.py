@@ -12,9 +12,6 @@ DEFAULTS = {
     "seller_response_hours": "48",
     "reservation_ttl_min": "15",
     "quote_ttl_min": "10",
-    "risk_max_order_vnd": "20000000",
-    "risk_max_vouchers_per_day": "3",
-    "risk_max_refunds_30d": "3",
     "prohibited_terms": "counterfeit,replica,fake",
 }
 

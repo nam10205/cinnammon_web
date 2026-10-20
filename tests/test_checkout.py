@@ -108,3 +108,16 @@ def test_checkout_pages(client, alice, login):
     g = CheckoutGroup.query.one()
     r = client.post(f"/checkout/{g.id}/place", data={"quote_hash": g.quote_hash, "idempotency_key": "web-1"})
     assert r.status_code == 302 and "/payments/" in r.headers["Location"]
+
+
+def test_high_value_checkout_is_never_held(alice):
+    # 25,000,000 VND exceeds the old risk_max_order_vnd of 20,000,000
+    import uuid
+    from helpers import offer_id
+    from marketplacex.modules.cart import service as cart
+    from marketplacex.modules.checkout import service as checkout
+    cart.add_item(alice, offer_id("P05"), 4)  # 4 x 6,490,000
+    g = checkout.quote(alice, alice.addresses[0].id, [])
+    checkout.place_order(alice, g.id, uuid.uuid4().hex, g.quote_hash)
+    assert g.failure_reason != "Under risk review"
+    assert g.status in ("placing", "completed")

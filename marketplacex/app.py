@@ -15,7 +15,7 @@ from .extensions import db
 MODULES = [
     "admin", "audit", "identity", "seller", "catalog", "inventory", "search", "cart", "promotion",
     "order", "payment", "logistics", "checkout", "notification", "review", "returns", "settlement",
-    "reporting", "support", "risk", "chat", "assistant",
+    "reporting", "support", "chat", "assistant",
 ]
 
 

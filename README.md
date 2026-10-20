@@ -20,12 +20,11 @@ python3 -m venv .venv
 
 | Actor | Email | Notes |
 |---|---|---|
-| Customer | alice@demo | Has orders in every state, an open return, a held high-value checkout and a chat |
+| Customer | alice@demo | Has orders in every state, an open return, and a chat |
 | Seller | sportzone@demo, techhub@demo, stylehouse@demo, gadgetpro@demo, homenest@demo, freshmart@demo, glowbeauty@demo, motoworld@demo | One verified shop each (the *seller* demo button logs in as SportZone) |
 | More customers | binh@demo, chi@demo, dung@demo | Delivered orders with verified-purchase reviews |
 | Administrator | admin@demo | Admin Portal, including demo clock and settlement controls |
 | Support Agent | support@demo | Support Console |
-| Risk Analyst | risk@demo | Risk Console |
 
 ### Demo data
 
@@ -63,13 +62,12 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 4. **Seller:** Returns → the case → *Accept*. The refund is issued, the order becomes *Refunded*, and Settlement shows the held entries and the refund reversal.
 5. **Admin:** Operations dashboard (§4.5 metrics), *Govern users & content* (approve or reject the pending "Replica Running Shoes" listing), *Platform policy* (fast-forward the clock 8 days, then *Run settlement release*), *Audit log*.
 6. **Support:** the dispute queue. To create one, have a seller reject a return and the customer escalate it, then record a reason-coded decision. Search for `alice` (personal data is masked; *Reveal* requires an audited justification).
-7. **Risk:** the seeded high-value checkout (Sony headphones × 4 > 20,000,000 ₫) is held. *Release* it, and the customer can then pay from the order page.
 
 ## Architecture (Figure 2 → code)
 
 | Component (Figure 2) | Module | Owns |
 |---|---|---|
-| Customer Application / Seller Center / Administration Portal | `marketplacex/templates/{customer,seller,admin,support,risk}` + each module's `routes.py` | Presentation only; routes call their module's service |
+| Customer Application / Seller Center / Administration Portal | `marketplacex/templates/{customer,seller,admin,support}` + each module's `routes.py` | Presentation only; routes call their module's service |
 | API Gateway | Flask app + blueprints (`marketplacex/app.py`), `auth.require_role` | Authentication, authorization, error contract with correlation id |
 | Identity and Access Service | `modules/identity` | User, Address, password reset |
 | Catalog Service | `modules/catalog` | Category, Product, Variant, Offer |
@@ -85,7 +83,6 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | Review Service | `modules/review` | Review |
 | Return and Refund Service | `modules/returns` | ReturnCase, Evidence, DisputeDecision |
 | Support Service | `modules/support` | SupportCase, CaseNote |
-| Risk and Fraud Service | `modules/risk` | RiskAlert |
 | Chat Service | `modules/chat` | Conversation, ChatMessage |
 | Notification Service | `modules/notification`, `adapters/notification_provider.py` | Notification |
 | Settlement Service | `modules/settlement` | LedgerEntry (double entry) |
@@ -132,8 +129,6 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | View Operational Report | Administrator | `/admin/` | tests/test_admin.py::test_reports_shape |
 | Manage Support Case | Support Agent | `/support/`, `/support/cases/<id>` | tests/test_support.py::test_case_lifecycle_and_timeline |
 | Assist Dispute | Support Agent | `/support/disputes/<id>` | tests/test_support.py::test_dispute_decision_via_console |
-| Review Risk Alert | Risk Analyst | `/risk/` | tests/test_risk.py::test_risk_pages |
-| Hold or Release Transaction | Risk Analyst | `/risk/alerts/<id>` | tests/test_risk.py::test_high_value_checkout_held_then_released |
 | Process Payment | Payment Provider | `/payments/callback` (HMAC-signed) | tests/test_payment.py::test_callback_endpoint |
 
 ### Functional requirements
@@ -168,7 +163,7 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | FR26 | Taxonomy, campaigns, platform vouchers | admin | tests/test_admin.py::test_taxonomy_and_campaign |
 | FR27 | Moderation with evidence and reasons | admin, review | tests/test_admin.py::test_bulk_moderation_preview_and_job |
 | FR28 | Support search with masked data | support | tests/test_support.py::test_customer_page_masks |
-| FR29 | Risk evaluation and holds | risk | tests/test_risk.py::test_refund_velocity_holds |
+| FR29 | Risk evaluation and holds (removed from scope) | - | - |
 | FR30 | Partner signed, idempotent callbacks | payment | tests/test_payment.py::test_callback_signature_verified |
 
 ### Business rules

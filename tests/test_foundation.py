@@ -1,3 +1,5 @@
+import pytest
+
 def test_register_and_login(client):
     r = client.post("/register", data={"email": "b@x", "password": "pw12345", "name": "B"}, follow_redirects=True)
     assert r.status_code == 200
@@ -48,3 +50,14 @@ def test_demo_login_buttons(client, make_user):
     make_user("admin", email="admin@demo")
     r = client.post("/demo-login/admin", follow_redirects=True)
     assert r.status_code == 200
+
+
+@pytest.mark.xfail(strict=True, reason="support removed in Task 2")
+def test_only_three_roles():
+    from marketplacex.modules.identity.models import ROLES
+    assert ROLES == ("customer", "seller", "admin")
+
+
+def test_no_risk_policies(app):
+    from marketplacex.modules.admin import policy
+    assert not [k for k in policy.DEFAULTS if k.startswith("risk_")]

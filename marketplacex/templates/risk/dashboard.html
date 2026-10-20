@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% from "_macros.html" import status_badge %}
-{% block content %}
-<div class="d-flex align-items-center gap-3 mb-3"><h1 class="h4 mb-0">Risk Console</h1>
-<nav class="nav nav-pills small">{% for s in ['open','released','rejected','all'] %}<a class="nav-link {{ 'active' if status == s }}" href="{{ url_for('risk.dashboard', status=s) }}">{{ s }}</a>{% endfor %}</nav></div>
-<table class="table table-sm bg-white align-middle"><thead><tr><th>Alert</th><th>Rule</th><th>Target</th><th>Customer</th><th>Score</th><th>Status</th><th>Raised</th></tr></thead><tbody>
-{% for a in alerts %}<tr><td><a href="{{ url_for('risk.alert', alert_id=a.id) }}">#{{ a.id }}</a></td><td><code>{{ a.rule }}</code></td><td>{{ a.target_type }} #{{ a.target_id }}</td><td>{{ a.customer.name if a.customer }}</td><td>{{ a.score }}</td><td>{{ status_badge(a.status) }}</td><td class="small">{{ a.created_at|dt }}</td></tr>
-{% else %}<tr><td colspan="7" class="text-muted">No alerts.</td></tr>{% endfor %}</tbody></table>
-{% endblock %}
