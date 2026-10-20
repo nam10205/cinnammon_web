@@ -10,6 +10,8 @@ from .models import Category, Offer, Product, ProductImage, Variant
 PRODUCT_STATUSES = ("draft", "pending", "active", "rejected", "suspended")
 
 
+TITLE_MAX = 255
+BRAND_MAX = 255
 DESCRIPTION_MAX = 255
 
 
@@ -19,7 +21,10 @@ def _fit_description(text: str | None) -> str:
 
 
 def sync_product(product: Product) -> None:
-    """Recompute the derived ERD fields price, stockQuantity and avgRating. Does not commit."""
+    """Recompute the derived ERD fields price, stockQuantity and avgRating.
+
+    Flushes the session so pending offers, ledgers and reviews are visible, but never commits.
+    """
     from ..inventory import service as inventory
     from ..review.models import Review
     db.session.flush()
@@ -71,7 +76,8 @@ def create_product(shop, category, title: str, brand: str, description: str, att
         db.session.flush()
         o = Offer(shop_id=shop.id, variant_id=var.id, price_vnd=int(v["price_vnd"]),
                   original_price_vnd=v.get("original_price_vnd"), purchase_limit=int(v.get("purchase_limit", 10)),
-                  sold_count=int(v.get("sold_count", 0)), rating_avg=float(v.get("rating_avg", 0.0)))
+                  sold_count=int(v.get("sold_count", 0)), rating_avg=float(v.get("rating_avg", 0.0)),
+                  base_rating_avg=float(v.get("rating_avg", 0.0)))
         db.session.add(o)
         db.session.flush()
         inventory.init_ledger(o.id, int(v.get("stock", 0)))
@@ -152,17 +158,25 @@ def delivery_promise(offer: Offer, city: str | None) -> str:
 
 # --- Listing publication (UC03, FR22) -------------------------------------------------------------
 
+def _length_errors(title: str | None, brand: str | None, description: str | None) -> list[str]:
+    errors = []
+    if len(title or "") > TITLE_MAX:
+        errors.append("Title must be 255 characters or fewer")
+    if len(brand or "") > BRAND_MAX:
+        errors.append("Brand must be 255 characters or fewer")
+    if len(description or "") > DESCRIPTION_MAX:
+        errors.append("Description must be 255 characters or fewer")
+    return errors
+
+
 def validate_listing(category, title: str, description: str, attributes: dict, variants: list[dict],
-                     shop=None) -> list[str]:
+                     shop=None, brand: str | None = None) -> list[str]:
     errors = []
     if shop is not None and shop.verification_status != "verified":
         errors.append("Only verified shops can publish listings")
     if not (title or "").strip():
         errors.append("Title is required")
-    if len(title or "") > 255:
-        errors.append("Title must be 255 characters or fewer")
-    if len(description or "") > DESCRIPTION_MAX:
-        errors.append("Description must be 255 characters or fewer")
+    errors.extend(_length_errors(title, brand, description))
     for attr in (category.attribute_schema or []):
         if not str((attributes or {}).get(attr, "")).strip():
             errors.append(f"Required attribute '{attr}' is missing")
@@ -200,13 +214,13 @@ def save_listing(seller, shop_id: int, data: dict, product_id: int | None = None
     attributes = {k: v for k, v in (data.get("attributes") or {}).items() if str(k).strip()}
     variants = data.get("variants") or []
     if submit:
-        errors = validate_listing(category, title, description, attributes, variants, shop)
+        errors = validate_listing(category, title, description, attributes, variants, shop, data.get("brand", ""))
         if errors:
             raise ValidationError("; ".join(errors))
     elif not title:
         raise ValidationError("Title is required")
-    elif len(description) > DESCRIPTION_MAX:
-        raise ValidationError("Description must be 255 characters or fewer")
+    elif errors := _length_errors(title, data.get("brand", ""), description):
+        raise ValidationError("; ".join(errors))
     if product_id is None:
         p = create_product(shop, category, title, data.get("brand", ""), description, attributes, variants, status="draft")
         if submit:

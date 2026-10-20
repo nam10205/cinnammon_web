@@ -28,11 +28,24 @@ def create_review(customer, order_item_id: int, rating, comment: str) -> Review:
     r = Review(order_item_id=item.id, product_id=offer.product.id, shop_id=offer.shop_id, customer_id=customer.id,
                rating=rating, comment=(comment or "").strip()[:1000], created_at=policy.now())
     db.session.add(r)
-    offer.rating_avg = round((offer.rating_avg * offer.rating_count + rating) / (offer.rating_count + 1), 2)
-    offer.rating_count += 1
+    _fold(offer, rating)
     catalog.sync_product(offer.product)
     db.session.commit()
     return r
+
+
+def _fold(offer, rating: int) -> None:
+    offer.rating_avg = round((offer.rating_avg * offer.rating_count + rating) / (offer.rating_count + 1), 2)
+    offer.rating_count += 1
+
+
+def _unfold(offer, rating: int) -> None:
+    if offer.rating_count <= 1:
+        offer.rating_count = 0
+        offer.rating_avg = offer.base_rating_avg or 0.0
+        return
+    offer.rating_avg = round((offer.rating_avg * offer.rating_count - rating) / (offer.rating_count - 1), 2)
+    offer.rating_count -= 1
 
 
 def get_review(review_id: int) -> Review:
@@ -59,6 +72,8 @@ def set_hidden(actor, review_id: int, hidden: bool, reason: str) -> Review:
     r = get_review(review_id)
     before = r.status
     r.status = "hidden" if hidden else "visible"
+    if before != r.status:
+        (_unfold if hidden else _fold)(r.order_item.offer, r.rating)
     audit.record(actor, "review.hide" if hidden else "review.show", "review", r.id, reason,
                  {"status": before}, {"status": r.status})
     catalog.sync_product(catalog.get_product(r.product_id))

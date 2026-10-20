@@ -77,6 +77,8 @@ class Offer(db.Model):
     sold_count = db.Column(db.Integer, nullable=False, default=0)
     rating_avg = db.Column(db.Float, nullable=False, default=0.0)
     rating_count = db.Column(db.Integer, nullable=False, default=0)
+    # Rating imported with the listing; restored when every review folded into rating_avg is hidden.
+    base_rating_avg = db.Column(db.Float, nullable=False, default=0.0)
     version = db.Column(db.Integer, nullable=False, default=1)
     shop = db.relationship("Shop")
     __table_args__ = (db.UniqueConstraint("shop_id", "variant_id"),)
