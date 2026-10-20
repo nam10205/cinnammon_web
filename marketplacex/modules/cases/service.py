@@ -95,7 +95,7 @@ def assign(agent, case_id: int) -> CustomerCase:
 
 
 def timeline(agent, case_id: int) -> list[dict]:
-    """Single chronological case view ."""
+    """Single chronological case view."""
     c = get_case(case_id)
     items = [{"at": n.at, "who": n.author.name, "kind": "note", "text": n.body} for n in c.notes]
     if c.order_id:

@@ -143,7 +143,7 @@ def open_case(customer, order_id: int, items: dict[int, int], reason: str, remed
 
 def add_evidence(user, case_id: int, statement: str, image=None) -> ReturnCase:
     c = get_case(case_id)
-    if user.id not in (c.customer_id, c.order.shop.owner_id) and user.role not in ("admin",):
+    if user.id not in (c.customer_id, c.order.shop.owner_id) and user.role != "admin":
         raise NotFound("Case not found")
     if statement and statement.strip():
         _note(c, user, "statement", statement.strip())

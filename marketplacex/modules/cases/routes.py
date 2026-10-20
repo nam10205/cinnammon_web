@@ -4,8 +4,6 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from ...auth import current_user, require_role
 from ..audit import service as audit
-from ..identity.models import User
-from ..order import service as order_service
 from ..returns import service as returns
 from . import service
 

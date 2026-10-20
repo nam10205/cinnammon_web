@@ -43,7 +43,8 @@ def test_cases_pages(client, alice, login, make_user):
     html = client.get("/admin/cases/?q=alice").get_data(as_text=True)
     assert "help please" in html or "Alice" in html
     from marketplacex.modules.cases.models import CustomerCase
-    assert client.get(f"/admin/cases/cases/{CustomerCase.query.one().id}").status_code == 200
+    r = client.get(f"/admin/cases/cases/{CustomerCase.query.one().id}")
+    assert r.status_code == 200 and "alice@demo" in r.get_data(as_text=True)
 
 
 def test_customer_cannot_open_cases_console(client, alice, login):

@@ -126,7 +126,7 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | Configure Platform Policy | Administrator | `/admin/policy` | tests/test_admin.py::test_policy_and_clock |
 | Govern Users and Content | Administrator | `/admin/moderation`, `/admin/users` | tests/test_admin.py::test_moderation_requires_reason |
 | View Operational Report | Administrator | `/admin/` | tests/test_admin.py::test_reports_shape |
-| Manage Support Case | Administrator | `/admin/cases/`, `/admin/cases/cases/<id>` | tests/test_cases.py::test_case_lifecycle_and_timeline |
+| Manage Customer Case | Administrator | `/admin/cases/`, `/admin/cases/cases/<id>` | tests/test_cases.py::test_case_lifecycle_and_timeline |
 | Assist Dispute | Administrator | `/admin/cases/disputes/<id>` | tests/test_cases.py::test_dispute_decision_via_console |
 | Process Payment | Payment Provider | `/payments/callback` (HMAC-signed) | tests/test_payment.py::test_callback_endpoint |
 
