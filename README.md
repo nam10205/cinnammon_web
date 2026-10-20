@@ -23,8 +23,7 @@ python3 -m venv .venv
 | Customer | alice@demo | Has orders in every state, an open return, and a chat |
 | Seller | sportzone@demo, techhub@demo, stylehouse@demo, gadgetpro@demo, homenest@demo, freshmart@demo, glowbeauty@demo, motoworld@demo | One verified shop each (the *seller* demo button logs in as SportZone) |
 | More customers | binh@demo, chi@demo, dung@demo | Delivered orders with verified-purchase reviews |
-| Administrator | admin@demo | Admin Portal, including demo clock and settlement controls |
-| Support Agent | support@demo | Support Console |
+| Administrator | admin@demo | Admin Portal, including Cases console, demo clock and settlement controls |
 
 ### Demo data
 
@@ -61,13 +60,13 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 3. **Customer:** open the order and *Review* the item, then *Request return / refund* (refund only).
 4. **Seller:** Returns → the case → *Accept*. The refund is issued, the order becomes *Refunded*, and Settlement shows the held entries and the refund reversal.
 5. **Admin:** Operations dashboard (§4.5 metrics), *Govern users & content* (approve or reject the pending "Replica Running Shoes" listing), *Platform policy* (fast-forward the clock 8 days, then *Run settlement release*), *Audit log*.
-6. **Support:** the dispute queue. To create one, have a seller reject a return and the customer escalate it, then record a reason-coded decision. Search for `alice` (personal data is masked; *Reveal* requires an audited justification).
+6. **Admin, Cases:** the dispute queue. To create one, have a seller reject a return and the customer escalate it, then record a reason-coded decision. Search for `alice` to see her cases and orders.
 
 ## Architecture (Figure 2 → code)
 
 | Component (Figure 2) | Module | Owns |
 |---|---|---|
-| Customer Application / Seller Center / Administration Portal | `marketplacex/templates/{customer,seller,admin,support}` + each module's `routes.py` | Presentation only; routes call their module's service |
+| Customer Application / Seller Center / Administration Portal | `marketplacex/templates/{customer,seller,admin}` + each module's `routes.py` | Presentation only; routes call their module's service |
 | API Gateway | Flask app + blueprints (`marketplacex/app.py`), `auth.require_role` | Authentication, authorization, error contract with correlation id |
 | Identity and Access Service | `modules/identity` | User, Address, password reset |
 | Catalog Service | `modules/catalog` | Category, Product, Variant, Offer |
@@ -82,7 +81,7 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | Logistics Service | `modules/logistics`, `adapters/logistics_provider.py` | Shipment, TrackingEvent |
 | Review Service | `modules/review` | Review |
 | Return and Refund Service | `modules/returns` | ReturnCase, Evidence, DisputeDecision |
-| Support Service | `modules/support` | SupportCase, CaseNote |
+| Cases Service | `modules/cases` | CustomerCase, CaseNote |
 | Chat Service | `modules/chat` | Conversation, ChatMessage |
 | Notification Service | `modules/notification`, `adapters/notification_provider.py` | Notification |
 | Settlement Service | `modules/settlement` | LedgerEntry (double entry) |
@@ -127,8 +126,8 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | Configure Platform Policy | Administrator | `/admin/policy` | tests/test_admin.py::test_policy_and_clock |
 | Govern Users and Content | Administrator | `/admin/moderation`, `/admin/users` | tests/test_admin.py::test_moderation_requires_reason |
 | View Operational Report | Administrator | `/admin/` | tests/test_admin.py::test_reports_shape |
-| Manage Support Case | Support Agent | `/support/`, `/support/cases/<id>` | tests/test_support.py::test_case_lifecycle_and_timeline |
-| Assist Dispute | Support Agent | `/support/disputes/<id>` | tests/test_support.py::test_dispute_decision_via_console |
+| Manage Support Case | Administrator | `/admin/cases/`, `/admin/cases/cases/<id>` | tests/test_cases.py::test_case_lifecycle_and_timeline |
+| Assist Dispute | Administrator | `/admin/cases/disputes/<id>` | tests/test_cases.py::test_dispute_decision_via_console |
 | Process Payment | Payment Provider | `/payments/callback` (HMAC-signed) | tests/test_payment.py::test_callback_endpoint |
 
 ### Functional requirements
@@ -152,7 +151,7 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | FR15 | Tracking with actor, time, reason | order | tests/test_order_state.py::test_transition_writes_history_audit_event |
 | FR16 | Cancellation with compensation | order | tests/test_tracking_cancel.py::test_cancel_confirmed_refunds_and_restocks |
 | FR17 | Return/refund with evidence and deadline | returns | tests/test_returns.py::test_eligibility_reasons |
-| FR18 | Escalation, immutable decision | returns, support | tests/test_returns.py::test_reject_escalate_decide |
+| FR18 | Escalation, immutable decision | returns, cases | tests/test_returns.py::test_reject_escalate_decide |
 | FR19 | Verified review and seller reply | review | tests/test_review.py::test_seller_reply_and_product_page |
 | FR20 | Notifications with delivery result | notification | tests/test_tracking_cancel.py::test_notification_inbox_and_read |
 | FR21 | Shop profile and verification | seller, admin | tests/test_admin.py::test_verify_shop |
@@ -162,7 +161,7 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 | FR25 | Settlement statement | settlement | tests/test_settlement.py::test_refund_posts_reversal |
 | FR26 | Taxonomy, campaigns, platform vouchers | admin | tests/test_admin.py::test_taxonomy_and_campaign |
 | FR27 | Moderation with evidence and reasons | admin, review | tests/test_admin.py::test_bulk_moderation_preview_and_job |
-| FR28 | Support search with masked data | support | tests/test_support.py::test_customer_page_masks |
+| FR28 | Case search for admins | cases | tests/test_cases.py::test_cases_pages |
 | FR29 | Risk evaluation and holds (removed from scope) | - | - |
 | FR30 | Partner signed, idempotent callbacks | payment | tests/test_payment.py::test_callback_signature_verified |
 

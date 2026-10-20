@@ -3,7 +3,8 @@ from __future__ import annotations
 from ...extensions import db
 
 
-class SupportCase(db.Model):
+class CustomerCase(db.Model):
+    __tablename__ = "customer_case"
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"))
@@ -19,7 +20,7 @@ class SupportCase(db.Model):
 
 class CaseNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey("support_case.id"), nullable=False)
+    case_id = db.Column(db.Integer, db.ForeignKey("customer_case.id"), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     body = db.Column(db.String(2000), nullable=False)
     at = db.Column(db.DateTime, nullable=False)

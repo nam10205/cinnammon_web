@@ -78,10 +78,10 @@ def test_reject_escalate_decide(alice, make_user):
     returns.seller_respond(seller_user("sportzone@demo"), c.id, "reject", "item is genuine")
     returns.escalate(alice, c.id, "photos attached")
     assert c.status == "disputed"
-    returns.decide_dispute(make_user("support"), c.id, "side_with_seller", "EVIDENCE_INSUFFICIENT", None, "")
+    returns.decide_dispute(make_user("admin"), c.id, "side_with_seller", "EVIDENCE_INSUFFICIENT", None, "")
     assert c.status == "closed" and o.status == "Rejected"
     with pytest.raises(NotEligible):
-        returns.decide_dispute(make_user("support"), c.id, "refund_customer", "X", None, "")
+        returns.decide_dispute(make_user("admin"), c.id, "refund_customer", "X", None, "")
 
 
 def test_deadline_allows_escalation(alice):

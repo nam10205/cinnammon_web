@@ -174,10 +174,3 @@ def eligible_offers(campaign: Campaign) -> list:
     for v in campaign.vouchers:
         out.extend(catalog.offers_of_shop(v.shop_id))
     return out
-
-
-def extend_hold(attempt_id: str, minutes: int) -> None:
-    until = policy.now() + timedelta(minutes=minutes)
-    for r in Redemption.query.filter_by(attempt_id=attempt_id, status="held").all():
-        r.expires_at = max(r.expires_at or until, until)
-    db.session.commit()

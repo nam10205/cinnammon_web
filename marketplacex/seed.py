@@ -16,7 +16,6 @@ USERS = [
     ("techhub@demo", "TechHub Owner", "seller", "0901000002"),
     ("stylehouse@demo", "StyleHouse Owner", "seller", "0901000003"),
     ("admin@demo", "Platform Admin", "admin", "0900000000"),
-    ("support@demo", "Support Agent", "support", "0900000001"),
 ]
 
 SHOPS = [("SportZone", "sportzone@demo", "Hanoi"), ("TechHub", "techhub@demo", "Ho Chi Minh City"),

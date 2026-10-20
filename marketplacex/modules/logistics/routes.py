@@ -10,7 +10,7 @@ bp = Blueprint("logistics", __name__)
 
 
 @bp.post("/logistics/shipments/<int:shipment_id>/advance")
-@require_role("customer", "seller", "admin", "support")
+@require_role("customer", "seller", "admin")
 def advance(shipment_id):
     """Fake carrier button shown on order pages (the carrier is an external actor)."""
     s = service.get_shipment(shipment_id)

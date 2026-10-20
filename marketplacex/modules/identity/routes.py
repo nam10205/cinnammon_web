@@ -9,7 +9,7 @@ from .models import ROLES, User
 
 bp = Blueprint("identity", __name__)
 
-HOME_BY_ROLE = {"customer": "/", "seller": "/seller/", "admin": "/admin/", "support": "/support/"}
+HOME_BY_ROLE = {"customer": "/", "seller": "/seller/", "admin": "/admin/"}
 
 
 def _home_for(user) -> str:

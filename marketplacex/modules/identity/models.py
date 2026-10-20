@@ -4,7 +4,7 @@ from datetime import datetime
 
 from ...extensions import db
 
-ROLES = ("customer", "seller", "admin", "support")
+ROLES = ("customer", "seller", "admin")
 
 
 class User(db.Model):

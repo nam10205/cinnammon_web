@@ -59,7 +59,7 @@ def test_partial_dispute_capped_to_order(alice, make_user):  # Important 2
     returns.seller_respond(s, c.id, "reject", "no")
     returns.escalate(alice, c.id, "please")
     with pytest.raises((ValidationError, RefundExceedsCaptured)):
-        returns.decide_dispute(make_user("support"), c.id, "partial", "GOODWILL", 3_000_000, "")
+        returns.decide_dispute(make_user("admin"), c.id, "partial", "GOODWILL", 3_000_000, "")
     assert Refund.query.count() == 0
 
 
@@ -82,7 +82,7 @@ def test_second_case_refund_after_first_rejected(alice, make_user):   # Importan
     c2 = returns.open_case(alice, o.id, {o.items[1].id: 1}, "r2", "refund_only", "s2")
     returns.seller_respond(s, c1.id, "reject", "no")
     returns.escalate(alice, c1.id, "please")
-    returns.decide_dispute(make_user("support"), c1.id, "side_with_seller", "EVIDENCE_INSUFFICIENT", None, "")
+    returns.decide_dispute(make_user("admin"), c1.id, "side_with_seller", "EVIDENCE_INSUFFICIENT", None, "")
     assert o.status == "ReturnRequested"          # c2 still open
     returns.seller_respond(s, c2.id, "accept", "ok")
     assert c2.status == "refunded" and o.status == "Refunded"

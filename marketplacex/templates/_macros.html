@@ -6,7 +6,7 @@
   'active':'success','pending':'warning','draft':'secondary','rejected':'danger','suspended':'dark','verified':'success','unverified':'secondary',
   'open':'warning','held':'danger','released':'success','dismissed':'secondary','resolved':'success',
   'requested':'warning','proposed':'info','accepted':'info','awaiting_return':'primary','inspecting':'primary','inspection_failed':'danger',
-  'seller_rejected':'danger','disputed':'danger','refund_pending':'warning','refunded':'success','closed':'secondary'} -%}
+  'seller_rejected':'danger','disputed':'danger','refunded':'success','closed':'secondary'} -%}
 <span class="badge bg-{{ colors.get(s, 'secondary') }}">{{ s }}</span>
 {%- endmacro %}
 

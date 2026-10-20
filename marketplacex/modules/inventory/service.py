@@ -106,10 +106,3 @@ def sweep_expired() -> list[str]:
     for a in attempts:
         release(a)
     return attempts
-
-
-def extend_hold(attempt_id: str, minutes: int) -> None:
-    until = policy.now() + timedelta(minutes=minutes)
-    for r in Reservation.query.filter_by(attempt_id=attempt_id, status="held").all():
-        r.expires_at = max(r.expires_at, until)
-    db.session.commit()

@@ -17,7 +17,7 @@ from ..payment import service as payment
 from .models import DisputeDecision, Evidence, ReturnCase, ReturnCaseItem
 
 OPEN_STATUSES = ("requested", "proposed", "accepted", "awaiting_return", "inspecting", "inspection_failed",
-                 "seller_rejected", "disputed", "refund_pending")
+                 "seller_rejected", "disputed")
 MAX_UPLOAD = 2 * 1024 * 1024
 MAGIC = {b"\x89PNG": "png", b"\xff\xd8\xff": "jpg"}
 
@@ -143,7 +143,7 @@ def open_case(customer, order_id: int, items: dict[int, int], reason: str, remed
 
 def add_evidence(user, case_id: int, statement: str, image=None) -> ReturnCase:
     c = get_case(case_id)
-    if user.id not in (c.customer_id, c.order.shop.owner_id) and user.role not in ("support", "admin"):
+    if user.id not in (c.customer_id, c.order.shop.owner_id) and user.role not in ("admin",):
         raise NotFound("Case not found")
     if statement and statement.strip():
         _note(c, user, "statement", statement.strip())

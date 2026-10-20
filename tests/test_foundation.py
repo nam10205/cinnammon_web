@@ -52,7 +52,6 @@ def test_demo_login_buttons(client, make_user):
     assert r.status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="support removed in Task 2")
 def test_only_three_roles():
     from marketplacex.modules.identity.models import ROLES
     assert ROLES == ("customer", "seller", "admin")
