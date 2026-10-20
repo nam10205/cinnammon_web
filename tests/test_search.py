@@ -74,3 +74,11 @@ def test_recommend_popular_without_customer(seeded):
 def test_search_page_renders(client, seeded):
     assert b"Nike Air Zoom" in client.get("/search?q=black+running+shoes").data
     assert b"degraded" in client.get("/search?mode=image&image=upload&q=mouse").data.lower()
+
+
+def test_search_history_rows(client, alice, login):
+    from marketplacex.modules.search.models import SearchHistory
+    login(client, alice)
+    client.get("/search?q=sneakers")
+    row = SearchHistory.query.one()
+    assert (row.keyword, row.search_type, row.customer_id) == ("sneakers", "text", alice.customer.id)

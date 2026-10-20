@@ -31,9 +31,3 @@ class SavedItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint("customer_id", "kind", "target_id"),)
 
-
-class RecentSearch(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("account.id"), nullable=False)
-    query_text = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False)

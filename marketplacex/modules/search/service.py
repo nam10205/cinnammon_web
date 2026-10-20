@@ -152,7 +152,7 @@ def recommend(customer, limit: int = 6) -> list[tuple]:
             from ..cart import service as cart
             recent = cart.recent_searches(customer)
             if recent:
-                text = recent[0].query_text
+                text = recent[0].keyword
                 for i in search(build_query("text", text), None).items[:2]:
                     add(i.offer, f"Because you searched '{text}'")
             for s in cart.saved(customer):

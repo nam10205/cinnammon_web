@@ -59,3 +59,14 @@ def test_cart_page_renders(client, alice, login):
     client.post("/cart/add", data={"offer_id": offer_id("P03"), "qty": 2})
     html = client.get("/cart").get_data(as_text=True)
     assert "SportZone" in html and "1,798,000" in html
+
+
+def test_record_search_noop_without_customer_and_images_excluded(alice):
+    from marketplacex.modules.search.models import SearchHistory
+    cart.record_search(alice, "x" * 300)
+    cart.record_search(alice, "[image]", "image")
+    assert SearchHistory.query.count() == 2
+    assert [r.keyword for r in cart.recent_searches(alice)] == ["x" * 255]
+    class NoCust: customer = None
+    cart.record_search(NoCust(), "y")
+    assert SearchHistory.query.count() == 2

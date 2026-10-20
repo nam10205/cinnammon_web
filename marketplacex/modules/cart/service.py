@@ -8,7 +8,8 @@ from ...events import publish
 from ...extensions import db
 from ..admin import policy
 from ..catalog import service as catalog
-from .models import Cart, CartItem, RecentSearch, SavedItem
+from ..search.models import SearchHistory
+from .models import Cart, CartItem, SavedItem
 
 
 @dataclass
@@ -127,28 +128,34 @@ def saved(customer) -> list[SavedItem]:
     return SavedItem.query.filter_by(customer_id=customer.id).order_by(SavedItem.id.desc()).all()
 
 
-def record_search(customer, text: str) -> None:
-    text = (text or "").strip()[:200]
-    if not text:
+def record_search(account, text: str, search_type: str = "text") -> None:
+    cust = getattr(account, "customer", None)
+    text = (text or "").strip()[:255]
+    if cust is None or not text:
         return
-    RecentSearch.query.filter_by(customer_id=customer.id, query_text=text).delete()
-    db.session.add(RecentSearch(customer_id=customer.id, query_text=text, created_at=policy.now()))
+    SearchHistory.query.filter_by(customer_id=cust.id, keyword=text, search_type=search_type).delete()
+    db.session.add(SearchHistory(customer_id=cust.id, keyword=text, search_type=search_type,
+                                 searched_at=policy.now()))
     db.session.flush()
-    extra = (RecentSearch.query.filter_by(customer_id=customer.id)
-             .order_by(RecentSearch.created_at.desc(), RecentSearch.id.desc()).offset(10).all())
+    extra = (SearchHistory.query.filter_by(customer_id=cust.id, search_type=search_type)
+             .order_by(SearchHistory.searched_at.desc(), SearchHistory.id.desc()).offset(10).all())
     for r in extra:
         db.session.delete(r)
     db.session.commit()
 
 
-def recent_searches(customer) -> list[RecentSearch]:
-    return (RecentSearch.query.filter_by(customer_id=customer.id)
-            .order_by(RecentSearch.created_at.desc(), RecentSearch.id.desc()).all())
+def recent_searches(account) -> list[SearchHistory]:
+    cust = getattr(account, "customer", None)
+    if cust is None:
+        return []
+    return (SearchHistory.query.filter_by(customer_id=cust.id, search_type="text")
+            .order_by(SearchHistory.searched_at.desc(), SearchHistory.id.desc()).all())
 
 
-def delete_recent(customer, recent_id: int) -> None:
-    r = db.session.get(RecentSearch, recent_id)
-    if r is None or r.customer_id != customer.id:
+def delete_recent(account, history_id: int) -> None:
+    cust = getattr(account, "customer", None)
+    r = db.session.get(SearchHistory, history_id)
+    if r is None or cust is None or r.customer_id != cust.id:
         raise NotFound("Search not found")
     db.session.delete(r)
     db.session.commit()
