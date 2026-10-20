@@ -142,7 +142,7 @@ def seed_bulk_catalog() -> int:
             [{"name": "Default", "price_vnd": price, "original_price_vnd": original, "stock": int(p.get("stock") or 0),
               "purchase_limit": 1 if vehicle else 5, "sold_count": (p["id"] * 37) % 2000 + 20,
               "rating_avg": round(float(p.get("rating") or 0), 1)}],
-            image_url=p["thumbnail"], status="active",
+            image_urls=[p["thumbnail"]], status="active",
             created_at=policy.now() - timedelta(days=p["id"] % 60))
         added += 1
     return added

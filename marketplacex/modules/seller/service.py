@@ -120,6 +120,7 @@ def update_offer(seller, offer_id: int, price_vnd: int, original_price_vnd, stoc
                  version: int):
     from ...errors import StaleVersion
     from ..audit import service as audit
+    from ..catalog import service as catalog
     from ..catalog.models import Offer
     from ..inventory import service as inventory
     o = db.session.get(Offer, offer_id)
@@ -137,6 +138,7 @@ def update_offer(seller, offer_id: int, price_vnd: int, original_price_vnd, stoc
     o.purchase_limit = int(purchase_limit)
     o.version += 1
     inventory.get_ledger(o.id).available = int(stock)
+    catalog.sync_product(o.product)
     audit.record(seller, "offer.update", "offer", o.id, None, before,
                  {"price": o.price_vnd, "stock": int(stock), "limit": o.purchase_limit})
     db.session.commit()

@@ -5,6 +5,7 @@ from ...errors import NotEligible, NotFound, ValidationError
 from ...extensions import db
 from ..admin import policy
 from ..audit import service as audit
+from ..catalog import service as catalog
 from ..order.models import OrderItem
 from .models import Review
 
@@ -29,6 +30,7 @@ def create_review(customer, order_item_id: int, rating, comment: str) -> Review:
     db.session.add(r)
     offer.rating_avg = round((offer.rating_avg * offer.rating_count + rating) / (offer.rating_count + 1), 2)
     offer.rating_count += 1
+    catalog.sync_product(offer.product)
     db.session.commit()
     return r
 
@@ -59,6 +61,7 @@ def set_hidden(actor, review_id: int, hidden: bool, reason: str) -> Review:
     r.status = "hidden" if hidden else "visible"
     audit.record(actor, "review.hide" if hidden else "review.show", "review", r.id, reason,
                  {"status": before}, {"status": r.status})
+    catalog.sync_product(catalog.get_product(r.product_id))
     db.session.commit()
     return r
 

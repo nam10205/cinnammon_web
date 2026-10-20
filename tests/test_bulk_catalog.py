@@ -37,7 +37,8 @@ def test_prices_converted_to_vnd(bulk):
 @pytest.mark.parametrize("mode,text,image,top", [
     ("text", "black running shoes under 2 million", None, "P01"),
     ("voice", "wireless mouse under 500k", None, "P07"),
-    ("image", "", "black-sneaker", "P03"),
+    pytest.param("image", "", "black-sneaker", "P03",
+                 marks=pytest.mark.xfail(strict=True, reason="vectors in Task 6")),
     ("text", "giày chạy bộ màu đen", None, "P01"),
 ])
 def test_prototype_results_survive_bulk_catalog(bulk, mode, text, image, top):

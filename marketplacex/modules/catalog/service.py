@@ -5,20 +5,65 @@ from ...events import publish
 from ...extensions import db
 from ..admin import policy
 from ..audit import service as audit
-from .models import Category, Offer, Product, Variant
+from .models import Category, Offer, Product, ProductImage, Variant
 
 PRODUCT_STATUSES = ("draft", "pending", "active", "rejected", "suspended")
 
 
+DESCRIPTION_MAX = 255
+
+
+def _fit_description(text: str | None) -> str:
+    text = text or ""
+    return text if len(text) <= DESCRIPTION_MAX else text[:DESCRIPTION_MAX - 3] + "..."
+
+
+def sync_product(product: Product) -> None:
+    """Recompute the derived ERD fields price, stockQuantity and avgRating. Does not commit."""
+    from ..inventory import service as inventory
+    from ..review.models import Review
+    db.session.flush()
+    offers = Offer.query.join(Variant).filter(Variant.product_id == product.id).all()
+    product.price = min((o.price_vnd for o in offers), default=0)
+    product.stock_quantity = sum(inventory.in_stock(o.id) for o in offers)
+    ratings = [r for (r,) in db.session.query(Review.rating)
+               .filter(Review.product_id == product.id, Review.status == "visible").all()]
+    if ratings:
+        product.avg_rating = round(sum(ratings) / len(ratings), 1)
+    else:
+        count = sum(o.rating_count for o in offers)
+        if count:
+            product.avg_rating = round(sum(o.rating_avg * o.rating_count for o in offers) / count, 1)
+        else:
+            rated = [o.rating_avg for o in offers if o.rating_avg]
+            product.avg_rating = round(sum(rated) / len(rated), 1) if rated else 0
+    product.updated_at = policy.now()
+
+
+def sync_offers(offer_ids) -> None:
+    """sync_product for every product owning one of these offers. Does not commit."""
+    ids = set(offer_ids)
+    if not ids:
+        return
+    # No DISTINCT over Product: Postgres cannot compare its JSON columns.
+    owners = db.session.query(Variant.product_id).join(Offer).filter(Offer.id.in_(ids))
+    for p in Product.query.filter(Product.id.in_(owners)).all():
+        sync_product(p)
+
+
 def create_product(shop, category, title: str, brand: str, description: str, attributes: dict,
-                   variants: list[dict], image_url: str | None = None, image_vector=None,
+                   variants: list[dict], image_urls: list[str] | None = None,
+                   vectors: list[bytes | None] | None = None,
                    status: str = "draft", created_at=None) -> Product:
     from ..inventory import service as inventory
-    p = Product(shop_id=shop.id, category_id=category.id, title=title, brand=brand, description=description,
-                attributes=attributes or {}, image_url=image_url,
-                image_vector=list(image_vector) if image_vector else None, status=status,
-                created_at=created_at or policy.now())
+    created = created_at or policy.now()
+    p = Product(shop_id=shop.id, category_id=category.id, title=title, brand=brand,
+                description=_fit_description(description), attributes=attributes or {}, status=status,
+                created_at=created, updated_at=created)
     db.session.add(p)
+    vectors = vectors or []
+    for i, url in enumerate(image_urls or []):
+        p.images.append(ProductImage(url=url, sort_order=i, feature_vector=vectors[i] if i < len(vectors) else None))
     db.session.flush()
     for v in variants:
         var = Variant(product_id=p.id, name=v["name"], sku=v.get("sku"))
@@ -30,6 +75,8 @@ def create_product(shop, category, title: str, brand: str, description: str, att
         db.session.add(o)
         db.session.flush()
         inventory.init_ledger(o.id, int(v.get("stock", 0)))
+    sync_product(p)
+    p.updated_at = created
     db.session.commit()
     return p
 
@@ -112,6 +159,10 @@ def validate_listing(category, title: str, description: str, attributes: dict, v
         errors.append("Only verified shops can publish listings")
     if not (title or "").strip():
         errors.append("Title is required")
+    if len(title or "") > 255:
+        errors.append("Title must be 255 characters or fewer")
+    if len(description or "") > DESCRIPTION_MAX:
+        errors.append("Description must be 255 characters or fewer")
     for attr in (category.attribute_schema or []):
         if not str((attributes or {}).get(attr, "")).strip():
             errors.append(f"Required attribute '{attr}' is missing")
@@ -154,6 +205,8 @@ def save_listing(seller, shop_id: int, data: dict, product_id: int | None = None
             raise ValidationError("; ".join(errors))
     elif not title:
         raise ValidationError("Title is required")
+    elif len(description) > DESCRIPTION_MAX:
+        raise ValidationError("Description must be 255 characters or fewer")
     if product_id is None:
         p = create_product(shop, category, title, data.get("brand", ""), description, attributes, variants, status="draft")
         if submit:
@@ -184,6 +237,7 @@ def save_listing(seller, shop_id: int, data: dict, product_id: int | None = None
             o.purchase_limit = int(v.get("purchase_limit") or o.purchase_limit)
             o.version += 1
             inventory.get_ledger(o.id).available = int(v.get("stock") or 0)
+    sync_product(p)
     db.session.commit()
     if submit and (p.status in ("draft", "rejected") or (p.status == "active" and content_changed)):
         set_status(p, "pending", seller, "Submitted for moderation")

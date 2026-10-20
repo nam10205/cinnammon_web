@@ -3,11 +3,11 @@
 <h2 class="h5">{{ 'Edit listing' if product else 'New listing' }}</h2>
 <form method="post" class="card card-body">
   <div class="row g-2">
-    <div class="col-md-6"><label class="form-label" for="title">Title</label><input class="form-control" id="title" name="title" value="{{ product.title if product }}" required></div>
+    <div class="col-md-6"><label class="form-label" for="title">Title</label><input class="form-control" id="title" name="title" maxlength="255" value="{{ product.title if product }}" required></div>
     <div class="col-md-3"><label class="form-label" for="brand">Brand</label><input class="form-control" id="brand" name="brand" value="{{ product.brand if product }}"></div>
     <div class="col-md-3"><label class="form-label" for="category_id">Category</label><select class="form-select" id="category_id" name="category_id">
       {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if product and product.category_id == c.id }}>{{ '— ' if c.parent_id }}{{ c.name }} (needs: {{ c.attribute_schema|join(', ') }})</option>{% endfor %}</select></div>
-    <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" name="description" rows="2">{{ product.description if product }}</textarea></div>
+    <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" name="description" maxlength="255" rows="2">{{ product.description if product }}</textarea></div>
   </div>
   <h3 class="h6 mt-3">Attributes</h3>
   <div id="attrs">

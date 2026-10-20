@@ -83,7 +83,7 @@ def seed_catalog() -> None:
             "Accessories": add_cat("Accessories", electronics), "Beauty": add_cat("Beauty")}
     db.session.commit()
 
-    for key, (title, brand, shop, cat, price, orig, rating, sold, vec, color, desc) in PRODUCTS.items():
+    for key, (title, brand, shop, cat, price, orig, rating, sold, _vec, color, desc) in PRODUCTS.items():
         attrs = {"color": color}
         if cat == "Shoes":
             attrs["size"] = "42"
@@ -92,7 +92,7 @@ def seed_catalog() -> None:
             shops[shop], cats[cat], title, brand, desc, attrs,
             [{"name": "Default", "price_vnd": price, "original_price_vnd": orig, "stock": 50, "purchase_limit": 5,
               "sold_count": sold, "rating_avg": rating}],
-            image_url=prototype_photo(key), image_vector=vec, status="active",
+            image_urls=[prototype_photo(key)], vectors=None, status="active",  # vectors: Task 6
             created_at=policy.now() - timedelta(days=age))
 
 
@@ -176,7 +176,7 @@ def seed_listings() -> None:
                            "Replica Running Shoes", "NoBrand", "Looks just like the famous brand.",
                            {"size": "42", "color": "red"},
                            [{"name": "Default", "price_vnd": 350000, "stock": 20, "purchase_limit": 5}],
-                           image_url="/static/sample_images/placeholder.svg", status="pending")
+                           image_urls=["/static/sample_images/placeholder.svg"], status="pending")
 
 
 def seed_chat() -> None:

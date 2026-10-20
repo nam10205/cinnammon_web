@@ -7,7 +7,7 @@ class Review(db.Model):
     """Verified-purchase review; one per order item (BR06)."""
     id = db.Column(db.Integer, primary_key=True)
     order_item_id = db.Column(db.Integer, db.ForeignKey("order_item.id"), unique=True, nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("Product.productID"), nullable=False, index=True)
     shop_id = db.Column(db.Integer, db.ForeignKey("shop.id"), nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey("account.id"), nullable=False)
     rating = db.Column(db.Integer, nullable=False)

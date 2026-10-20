@@ -10,6 +10,12 @@ from ..admin import policy
 from .models import Reservation, StockLedger
 
 
+def _sync(offer_ids) -> None:
+    """Keep Product.stockQuantity in step with the ledgers (same transaction, no commit)."""
+    from ..catalog import service as catalog
+    catalog.sync_offers(offer_ids)
+
+
 def init_ledger(offer_id: int, available: int) -> StockLedger:
     led = StockLedger(offer_id=offer_id, available=max(0, int(available)))
     db.session.add(led)
@@ -36,6 +42,7 @@ def set_stock(offer_id: int, available: int) -> None:
     led.available = int(available)
     led.version += 1
     publish("StockChanged", offer_id, {"offer_id": offer_id, "available": led.available})
+    _sync([offer_id])
     db.session.commit()
 
 
@@ -63,17 +70,20 @@ def reserve(items: list[tuple[int, int]], attempt_id: str, ttl_min: int) -> list
         r = Reservation(offer_id=oid, attempt_id=attempt_id, qty=qty, expires_at=expires)
         db.session.add(r)
         out.append(r)
+    _sync(merged)
     db.session.commit()
     return out
 
 
 def commit(attempt_id: str) -> None:
-    for r in Reservation.query.filter_by(attempt_id=attempt_id, status="held").all():
+    rows = Reservation.query.filter_by(attempt_id=attempt_id, status="held").all()
+    for r in rows:
         led = get_ledger(r.offer_id)
         led.reserved -= r.qty
         led.committed += r.qty
         led.version += 1
         r.status = "committed"
+    _sync(r.offer_id for r in rows)
     db.session.commit()
 
 
@@ -81,12 +91,14 @@ def release(attempt_id: str, offer_ids: list[int] | None = None) -> None:
     q = Reservation.query.filter_by(attempt_id=attempt_id, status="held")
     if offer_ids is not None:
         q = q.filter(Reservation.offer_id.in_(offer_ids))
-    for r in q.all():
+    rows = q.all()
+    for r in rows:
         led = get_ledger(r.offer_id)
         led.reserved -= r.qty
         led.available += r.qty
         led.version += 1
         r.status = "released"
+    _sync(r.offer_id for r in rows)
     db.session.commit()
 
 
@@ -96,6 +108,7 @@ def return_committed(offer_id: int, qty: int) -> None:
     led.committed -= q
     led.available += q
     led.version += 1
+    _sync([offer_id])
     db.session.commit()
 
 
