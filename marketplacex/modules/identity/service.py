@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from ...errors import NotFound, ValidationError
 from ...extensions import db
 from ..admin import policy
-from .models import Address, PasswordResetToken, User
+from .models import ROLES, Account, Address, Customer, FullName, PasswordResetToken
 
 
 def hash_password(pw: str) -> str:
@@ -18,7 +18,19 @@ def hash_password(pw: str) -> str:
     return generate_password_hash(pw, method=method)
 
 
-def register(email: str, password: str, name: str) -> User:
+def split_name(name: str) -> tuple[str, str, str]:
+    """First token, middle tokens joined by spaces, last token. One word -> (word, "", "")."""
+    parts = (name or "").split()
+    if not parts:
+        return "", "", ""
+    if len(parts) == 1:
+        return parts[0], "", ""
+    return parts[0], " ".join(parts[1:-1]), parts[-1]
+
+
+def create_account(email: str, name: str, role: str, password: str, phone: str | None = None,
+                   created_at=None) -> Account:
+    """Create a login; a customer also gets its ERD FullName + Customer rows."""
     email = (email or "").strip().lower()
     if not email or "@" not in email:
         raise ValidationError("A valid email is required")
@@ -26,17 +38,28 @@ def register(email: str, password: str, name: str) -> User:
         raise ValidationError("Password must be at least 6 characters")
     if not (name or "").strip():
         raise ValidationError("Name is required")
-    if User.query.filter_by(email=email).first():
+    if role not in ROLES:
+        raise ValidationError("Unknown role")
+    if Account.query.filter_by(email=email).first():
         raise ValidationError("Email already registered")
-    u = User(email=email, name=name.strip(), role="customer", password_hash=hash_password(password),
-             created_at=policy.now())
-    db.session.add(u)
+    a = Account(email=email, name=" ".join(name.split()), role=role, phone=phone,
+                password_hash=hash_password(password), created_at=created_at or policy.now())
+    db.session.add(a)
+    if role == "customer":
+        first, middle, last = split_name(name)
+        fn = FullName(first_name=first, middle_name=middle, last_name=last)
+        a.name = fn.display
+        db.session.add(Customer(full_name=fn, account=a, email=email, phone_number=phone))
     db.session.commit()
-    return u
+    return a
 
 
-def authenticate(email: str, password: str) -> User:
-    u = User.query.filter_by(email=(email or "").strip().lower()).first()
+def register(email: str, password: str, name: str) -> Account:
+    return create_account(email, name, "customer", password)
+
+
+def authenticate(email: str, password: str) -> Account:
+    u = Account.query.filter_by(email=(email or "").strip().lower()).first()
     if not u or not check_password_hash(u.password_hash, password or ""):
         raise ValidationError("Invalid email or password")
     if u.status != "active":
@@ -44,27 +67,34 @@ def authenticate(email: str, password: str) -> User:
     return u
 
 
-def get_user(user_id: int) -> User:
-    u = db.session.get(User, user_id)
+def get_user(user_id: int) -> Account:
+    u = db.session.get(Account, user_id)
     if u is None:
         raise NotFound("User not found")
     return u
 
 
-def add_address(user: User, recipient: str, phone: str, line: str, city: str, is_default: bool = False) -> Address:
-    if not all(x and str(x).strip() for x in (recipient, phone, line, city)):
-        raise ValidationError("All address fields are required")
-    if is_default or not user.addresses:
-        for a in user.addresses:
+def add_address(account: Account, recipient: str, phone: str, street: str, ward: str, district: str, city: str,
+                detail: str = "", is_default: bool = False) -> Address:
+    c = account.customer
+    if c is None:
+        raise ValidationError("Only customers have addresses")
+    if not all(x and str(x).strip() for x in (recipient, phone, street, ward, city)):
+        raise ValidationError("Recipient, phone, street, ward and city are required")
+    if is_default or not c.addresses:
+        for a in c.addresses:
             a.is_default = False
         is_default = True
-    a = Address(user_id=user.id, recipient=recipient, phone=phone, line=line, city=city, is_default=is_default)
+    a = Address(customer=c, recipient=recipient, phone=phone, street=street, ward=ward, district=district or None,
+                city=city, detail=detail or None, is_default=is_default)
     db.session.add(a)
+    if is_default:
+        c.default_address = a
     db.session.commit()
     return a
 
 
-def default_address(user: User) -> Address | None:
+def default_address(user: Account) -> Address | None:
     for a in user.addresses:
         if a.is_default:
             return a
@@ -72,7 +102,7 @@ def default_address(user: User) -> Address | None:
 
 
 def start_recovery(email: str) -> str | None:
-    u = User.query.filter_by(email=(email or "").strip().lower()).first()
+    u = Account.query.filter_by(email=(email or "").strip().lower()).first()
     if not u:
         return None
     tok = secrets.token_urlsafe(24)

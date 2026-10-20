@@ -159,9 +159,9 @@ def verify_shop(actor, shop_id: int, approve: bool, reason: str):
 
 
 def suspend_user(actor, user_id: int, suspend: bool, reason: str):
-    from ..identity.models import User
+    from ..identity.models import Account
     reason = _reason(reason)
-    u = db.session.get(User, user_id)
+    u = db.session.get(Account, user_id)
     if u is None:
         raise NotFound("User not found")
     if u.id == actor.id:

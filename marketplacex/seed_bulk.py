@@ -104,16 +104,14 @@ def _category(name: str, parent_name: str | None, schema):
 
 def _shops() -> dict:
     from .modules.identity import service as identity
-    from .modules.identity.models import User
     from .modules.seller import service as seller
     from .modules.seller.models import Shop
     for name, email, owner_name, city in NEW_SHOPS:
         if Shop.query.filter_by(name=name).first():
             continue
-        u = User(email=email, name=owner_name, role="seller", phone="0902" + str(abs(hash(name)) % 1000000).zfill(6),
-                 password_hash=identity.hash_password("demo123"), created_at=policy.now() - timedelta(days=120))
-        db.session.add(u)
-        db.session.commit()
+        u = identity.create_account(email, owner_name, "seller", "demo123",
+                                    phone="0902" + str(abs(hash(name)) % 1000000).zfill(6),
+                                    created_at=policy.now() - timedelta(days=120))
         s = seller.create_shop(u, name, city, f"{name} official store")
         s.verification_status = "verified"
     db.session.commit()
@@ -151,26 +149,25 @@ def seed_bulk_catalog() -> int:
 
 
 EXTRA_CUSTOMERS = [
-    ("binh@demo", "Binh Tran", "0933111222", "45 Le Loi, District 1", "Ho Chi Minh City",
+    ("binh@demo", "Binh Tran", "0933111222", ("45 Le Loi", "Ben Nghe", "District 1"), "Ho Chi Minh City",
      ["Apple iPhone Charger", "Black Sun Glasses"]),
-    ("chi@demo", "Chi Le", "0944222333", "8 Bach Dang", "Da Nang", ["Red Lipstick", "Basketball"]),
-    ("dung@demo", "Dung Pham", "0955333444", "21 Hang Bai", "Hanoi", ["Blue Frock", "Cooking Oil"]),
+    ("chi@demo", "Chi Le", "0944222333", ("8 Bach Dang", "Thach Thang", "Hai Chau"), "Da Nang",
+     ["Red Lipstick", "Basketball"]),
+    ("dung@demo", "Dung Pham", "0955333444", ("21 Hang Bai", "Hang Bai", "Hoan Kiem"), "Hanoi",
+     ["Blue Frock", "Cooking Oil"]),
 ]
 
 
 def seed_extra_customers() -> None:
     """Three more customers with delivered orders and verified-purchase reviews (taken from the snapshot)."""
     from .modules.identity import service as identity
-    from .modules.identity.models import User
     from .modules.review import service as review
     from .seed import _buy_title, _ship
     reviews = {p["title"]: p["reviews"] for p in load_snapshot()}
-    for email, name, phone, line, city, titles in EXTRA_CUSTOMERS:
-        u = User(email=email, name=name, role="customer", phone=phone,
-                 password_hash=identity.hash_password("demo123"), created_at=policy.now() - timedelta(days=200))
-        db.session.add(u)
-        db.session.commit()
-        identity.add_address(u, name, phone, line, city, True)
+    for email, name, phone, (street, ward, district), city, titles in EXTRA_CUSTOMERS:
+        u = identity.create_account(email, name, "customer", "demo123", phone=phone,
+                                    created_at=policy.now() - timedelta(days=200))
+        identity.add_address(u, name, phone, street, ward, district, city, is_default=True)
         for t in titles:
             o = _ship(_buy_title(u, t), deliver=True)
             src = (reviews.get(t) or [{"rating": 5, "comment": "Great product!"}])[0]

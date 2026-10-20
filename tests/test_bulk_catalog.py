@@ -51,8 +51,8 @@ def test_new_shop_logins_and_pages(client, bulk):
     phone = Product.query.filter_by(title="iPhone 9").first() or Product.query.join(Product.category).filter_by(name="Smartphones").first()
     assert client.get(f"/products/{phone.id}").status_code == 200
     client.get("/logout")
-    from marketplacex.modules.identity.models import User
-    assert User.query.filter_by(email="homenest@demo", role="seller").one()
+    from marketplacex.modules.identity.models import Account
+    assert Account.query.filter_by(email="homenest@demo", role="seller").one()
 
 
 def test_extra_customers_with_reviews(bulk):

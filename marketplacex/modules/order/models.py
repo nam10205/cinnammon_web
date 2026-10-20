@@ -9,7 +9,7 @@ class Order(db.Model):
     group_id = db.Column(db.Integer, index=True, nullable=False)
     attempt_id = db.Column(db.String(64), index=True, nullable=False)
     shop_id = db.Column(db.Integer, db.ForeignKey("shop.id"), nullable=False, index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("account.id"), nullable=False, index=True)
     address_snapshot = db.Column(db.JSON, nullable=False)
     status = db.Column(db.String(30), nullable=False, default="Draft")
     merchandise_vnd = db.Column(db.Integer, nullable=False, default=0)
@@ -25,7 +25,7 @@ class Order(db.Model):
     items = db.relationship("OrderItem", backref="order", order_by="OrderItem.id", cascade="all, delete-orphan")
     history = db.relationship("OrderStatusHistory", order_by="OrderStatusHistory.id", cascade="all, delete-orphan")
     shop = db.relationship("Shop")
-    customer = db.relationship("User")
+    customer = db.relationship("Account")
 
 
 class OrderItem(db.Model):
@@ -49,7 +49,7 @@ class OrderStatusHistory(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False, index=True)
     from_status = db.Column(db.String(30))
     to_status = db.Column(db.String(30), nullable=False)
-    actor_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    actor_id = db.Column(db.Integer, db.ForeignKey("account.id"))
     reason = db.Column(db.String(500))
     at = db.Column(db.DateTime, nullable=False)
-    actor = db.relationship("User")
+    actor = db.relationship("Account")

@@ -10,9 +10,9 @@ from .extensions import db
 
 def current_user():
     if "current_user" not in g:
-        from .modules.identity.models import User
+        from .modules.identity.models import Account
         uid = session.get("user_id")
-        u = db.session.get(User, uid) if uid else None
+        u = db.session.get(Account, uid) if uid else None
         if u is not None and u.status != "active":
             u = None
         g.current_user = u

@@ -37,7 +37,7 @@ def _spread(amount: int, items: list[dict]) -> None:
 
 def _address(customer, address_id) -> Address:
     a = db.session.get(Address, int(address_id)) if address_id else None
-    if a is None or a.user_id != customer.id:
+    if a is None or a.customer.account_id != customer.id:
         raise ValidationError("Please choose a delivery address")
     return a
 
@@ -211,8 +211,8 @@ def _on_payment_authorized(event) -> None:
     for o in live:
         for it in o.items:
             it.offer.sold_count += it.qty
-    from ..identity.models import User
-    cart.remove_items(db.session.get(User, g.customer_id), [it.offer_id for o in live for it in o.items])
+    from ..identity.models import Account
+    cart.remove_items(db.session.get(Account, g.customer_id), [it.offer_id for o in live for it in o.items])
     g.status = "completed"
     # Money captured for shop orders cancelled before payment goes back to the customer.
     excess = (p.captured_vnd - sum(o.total_vnd for o in live) - payment.refunded_vnd(p.id)) if p else 0

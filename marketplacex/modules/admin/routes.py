@@ -110,13 +110,13 @@ def moderation():
 @bp.route("/users", methods=["GET", "POST"])
 @require_role("admin")
 def users():
-    from ..identity.models import User
+    from ..identity.models import Account
     if request.method == "POST":
         f = request.form
         service.suspend_user(current_user(), f.get("id", type=int), f.get("suspend") == "1", f.get("reason"))
         flash("User updated", "success")
         return redirect(url_for("admin.users"))
-    return render_template("admin/users.html", users=User.query.order_by(User.id).all())
+    return render_template("admin/users.html", users=Account.query.order_by(Account.id).all())
 
 
 @bp.get("/audit")

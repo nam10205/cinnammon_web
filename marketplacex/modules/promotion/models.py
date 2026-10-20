@@ -45,7 +45,7 @@ class Redemption(db.Model):
     """Voucher hold/redemption; key unique per customer, campaign and checkout attempt (BR04)."""
     id = db.Column(db.Integer, primary_key=True)
     voucher_id = db.Column(db.Integer, db.ForeignKey("voucher.id"), nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("account.id"), nullable=False)
     campaign_id = db.Column(db.Integer, db.ForeignKey("campaign.id"), nullable=False)
     attempt_id = db.Column(db.String(64), nullable=False, index=True)
     order_group_id = db.Column(db.Integer)

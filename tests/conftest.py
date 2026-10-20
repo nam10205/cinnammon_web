@@ -37,16 +37,11 @@ def client(app):
 
 @pytest.fixture
 def make_user(app):
-    from marketplacex.modules.identity.models import User
-    from marketplacex.modules.identity.service import hash_password
+    from marketplacex.modules.identity import service as identity
 
     def _make(role="customer", email=None):
         n = next(_seq)
-        u = User(email=email or f"{role}{n}@test", name=f"{role.title()} {n}",
-                 role=role, password_hash=hash_password("pw12345"))
-        db.session.add(u)
-        db.session.commit()
-        return u
+        return identity.create_account(email or f"{role}{n}@test", f"{role.title()} {n}", role, "pw12345")
     return _make
 
 

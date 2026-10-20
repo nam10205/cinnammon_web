@@ -5,7 +5,7 @@ from ...errors import IllegalTransition, NotEligible, NotFound, ValidationError
 from ...extensions import db
 from ..admin import policy
 from ..audit import service as audit
-from ..identity.models import User
+from ..identity.models import Account
 from ..order import service as order_service
 from ..order.models import Order
 from .models import CaseNote, CustomerCase
@@ -45,8 +45,9 @@ def search(agent, q: str) -> dict:
         out["cases"] = CustomerCase.query.filter(CustomerCase.status != "resolved").order_by(CustomerCase.id.desc()).all()
         return out
     like = f"%{q.lower()}%"
-    out["customers"] = User.query.filter(User.role == "customer", db.or_(db.func.lower(User.email).like(like),
-                                                                           db.func.lower(User.name).like(like))).all()
+    out["customers"] = Account.query.filter(Account.role == "customer",
+                                            db.or_(db.func.lower(Account.email).like(like),
+                                                   db.func.lower(Account.name).like(like))).all()
     if q.lstrip("#").isdigit():
         n = int(q.lstrip("#"))
         o = db.session.get(Order, n)

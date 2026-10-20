@@ -22,8 +22,8 @@ def shop_id(name):
 
 
 def user_by_email(email):
-    from marketplacex.modules.identity.models import User
-    return User.query.filter_by(email=email).one()
+    from marketplacex.modules.identity.models import Account
+    return Account.query.filter_by(email=email).one()
 
 
 def user_id(email):
@@ -80,8 +80,8 @@ def paid_order(customer, key, qty=1):
 
 
 def _owner_of(order):
-    from marketplacex.modules.identity.models import User
-    return db.session.get(User, order.shop.owner_id)
+    from marketplacex.modules.identity.models import Account
+    return db.session.get(Account, order.shop.owner_id)
 
 
 def shipped_order(customer, key, qty=1):

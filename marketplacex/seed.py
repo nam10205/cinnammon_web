@@ -55,18 +55,15 @@ def seed_catalog() -> None:
     from .modules.catalog import service as catalog
     from .modules.catalog.models import Category
     from .modules.identity import service as identity
-    from .modules.identity.models import User
     from .modules.seller import service as seller
 
     ensure_defaults()
     users = {}
     for email, name, role, phone in USERS:
-        u = User(email=email, name=name, role=role, phone=phone, password_hash=identity.hash_password(DEMO_PASSWORD),
-                 created_at=policy.now() - timedelta(days=90))
-        db.session.add(u)
-        users[email] = u
-    db.session.commit()
-    identity.add_address(users["alice@demo"], "Alice Nguyen", "0912345678", "12 Trang Tien, Hoan Kiem", "Hanoi", True)
+        users[email] = identity.create_account(email, name, role, DEMO_PASSWORD, phone=phone,
+                                               created_at=policy.now() - timedelta(days=90))
+    identity.add_address(users["alice@demo"], "Alice Nguyen", "0912345678", "12 Trang Tien", "Trang Tien",
+                         "Hoan Kiem", "Hanoi", is_default=True)
 
     shops = {}
     for name, owner, loc in SHOPS:
@@ -141,10 +138,10 @@ def _buy_title(customer, title: str, qty: int = 1, codes=None):
 
 
 def _ship(order, deliver: bool):
-    from .modules.identity.models import User
+    from .modules.identity.models import Account
     from .modules.logistics import service as logistics
     from .modules.seller import service as seller
-    owner = db.session.get(User, order.shop.owner_id)
+    owner = db.session.get(Account, order.shop.owner_id)
     seller.accept(owner, order.id)
     sh = seller.pack(owner, order.id, 700)
     seller.hand_over(owner, order.id)
@@ -154,11 +151,11 @@ def _ship(order, deliver: bool):
 
 
 def seed_demo_orders() -> None:
-    from .modules.identity.models import User
+    from .modules.identity.models import Account
     from .modules.returns import service as returns
     from .modules.settlement import service as settlement
-    alice = User.query.filter_by(email="alice@demo").one()
-    admin = User.query.filter_by(email="admin@demo").one()
+    alice = Account.query.filter_by(email="alice@demo").one()
+    admin = Account.query.filter_by(email="admin@demo").one()
     _ship(_buy(alice, "P11", 2), deliver=True)
     policy.advance_clock(8 * 24)  # demo clock: let the first order's return window close
     settlement.release_eligible(admin)
@@ -184,9 +181,9 @@ def seed_listings() -> None:
 
 def seed_chat() -> None:
     from .modules.chat import service as chat
-    from .modules.identity.models import User
+    from .modules.identity.models import Account
     from .modules.seller.models import Shop
-    alice = User.query.filter_by(email="alice@demo").one()
+    alice = Account.query.filter_by(email="alice@demo").one()
     shop = Shop.query.filter_by(name="SportZone").one()
     c = chat.get_or_create(alice, shop.id)
     chat.send(alice, c.id, "Hi! Do the Nike Air Zoom run true to size?")

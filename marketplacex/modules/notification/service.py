@@ -21,8 +21,8 @@ STATUS_TEXT = {
 
 
 def notify(user_id: int, template: str, body: str, channel: str = "in_app", link: str | None = None) -> Notification:
-    from ..identity.models import User
-    u = db.session.get(User, user_id)
+    from ..identity.models import Account
+    u = db.session.get(Account, user_id)
     ok = FakeNotificationProvider(current_app.config.get("NOTIFICATION_FAILURE_RATE", 0)).send(
         channel, getattr(u, "email", ""), body)
     n = Notification(user_id=user_id, channel=channel, template=template, body=body, link=link,

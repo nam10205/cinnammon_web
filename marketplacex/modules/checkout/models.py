@@ -6,10 +6,10 @@ from ...extensions import db
 class CheckoutGroup(db.Model):
     """Checkout attempt and orchestration state (report §7 Checkout component)."""
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("account.id"), nullable=False, index=True)
     attempt_id = db.Column(db.String(64), unique=True, nullable=False)
     idempotency_key = db.Column(db.String(64))
-    address_id = db.Column(db.Integer, db.ForeignKey("address.id"))
+    address_id = db.Column(db.Integer, db.ForeignKey("Address.addressID"))
     voucher_codes = db.Column(db.JSON, default=list)
     quote_payload = db.Column(db.JSON, nullable=False)
     quote_hash = db.Column(db.String(64), nullable=False)

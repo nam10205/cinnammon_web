@@ -5,7 +5,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from ...auth import current_user, login_user, logout_user, require_role
 from ...errors import NotFound, ValidationError
 from . import service
-from .models import ROLES, User
+from .models import ROLES, Account
 
 bp = Blueprint("identity", __name__)
 
@@ -32,7 +32,7 @@ def login():
 
 @bp.post("/demo-login/<role>")
 def demo_login(role):
-    u = User.query.filter_by(role=role, status="active").order_by(User.id).first()
+    u = Account.query.filter_by(role=role, status="active").order_by(Account.id).first()
     if u is None:
         raise NotFound(f"No demo {role} account. Run `flask --app marketplacex.app seed`.")
     login_user(u)
@@ -86,7 +86,7 @@ def account():
 @require_role()
 def add_address():
     f = request.form
-    service.add_address(current_user(), f.get("recipient"), f.get("phone"), f.get("line"), f.get("city"),
-                        bool(f.get("is_default")))
+    service.add_address(current_user(), f.get("recipient"), f.get("phone"), f.get("street"), f.get("ward"),
+                        f.get("district"), f.get("city"), f.get("detail") or "", bool(f.get("is_default")))
     flash("Address saved", "success")
     return redirect(url_for("identity.account"))
