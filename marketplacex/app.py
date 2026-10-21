@@ -6,19 +6,14 @@ import os
 import uuid
 
 import click
-from flask import Flask, flash, g, jsonify, redirect, render_template, request
-from sqlalchemy import inspect, text
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session
+from sqlalchemy import text
 
 from .config import Config
 from .errors import DomainError
 from .extensions import db
 
-# One package per service in the report's component diagram (Figure 2).
-MODULES = [
-    "admin", "audit", "identity", "seller", "catalog", "inventory", "search", "cart", "promotion",
-    "order", "payment", "logistics", "checkout", "notification", "review", "returns", "settlement",
-    "reporting", "cases", "chat", "assistant",
-]
+MODULES = ["identity", "catalog", "search", "cart", "order", "seller", "admin", "assistant"]
 
 
 def _import_optional(name: str):
@@ -42,7 +37,6 @@ def create_app(config: dict | None = None) -> Flask:
     os.makedirs(os.path.join(os.path.dirname(app.root_path), "instance"), exist_ok=True)
     db.init_app(app)
 
-    from . import events  # noqa: F401  (registers EventLog models)
     for m in MODULES:
         for part in ("models", "service"):
             _import_optional(f"marketplacex.modules.{m}.{part}")
@@ -57,12 +51,11 @@ def create_app(config: dict | None = None) -> Flask:
 
 
 def _register_helpers(app: Flask) -> None:
-    from .auth import current_user
+    from . import auth
 
     @app.before_request
     def _correlation():
         g.correlation_id = uuid.uuid4().hex
-        g.pop("current_user", None)
 
     @app.template_filter("vnd")
     def vnd(v):
@@ -77,15 +70,10 @@ def _register_helpers(app: Flask) -> None:
 
     @app.context_processor
     def _ctx():
-        u = current_user()
-        unread = 0
-        if u is not None:
-            try:
-                from .modules.notification import service as notif
-                unread = notif.unread_count(u)
-            except ImportError:
-                unread = 0
-        return {"current_user": u, "has_endpoint": has_endpoint, "unread_count": unread}
+        cart = session.get("cart", {})
+        cart_count = sum(int(q) for q in cart.values()) if isinstance(cart, dict) else 0
+        return {"role": auth.current_role(), "customer": auth.current_customer(),
+                "has_endpoint": has_endpoint, "cart_count": cart_count}
 
 
 def _wants_json() -> bool:
@@ -129,19 +117,13 @@ def _register_cli(app: Flask) -> None:
     @app.cli.command("init-db")
     @click.option("--reset", is_flag=True, help="Drop every table first, then recreate and reseed.")
     def init_db_cmd(reset: bool):
-        """Create the schema and seed the Tiki.vn catalogue with demo accounts."""
+        """Create the schema and seed the Tiki.vn catalogue with demo customers."""
         from . import seed_tiki
-        from .modules.admin import policy
-        from .modules.identity.models import Account
         if reset:
             db.drop_all()
-        elif inspect(db.engine).has_table(Account.__tablename__) and db.session.query(Account.id).first():
-            click.echo("Database already initialised; use --reset to wipe and reseed.")
-            raise SystemExit(1)
         db.create_all()
-        policy.ensure_defaults()
         counts = seed_tiki.run()
-        db.session.commit()  # release the session's locks so ALTER TABLE does not wait on them
+        db.session.commit()
         db.session.close()
         rls = enable_rls()
         for k, v in counts.items():

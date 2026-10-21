@@ -1,8 +1,0 @@
-{% extends "base.html" %}
-{% from "_macros.html" import status_badge %}
-{% block content %}{% include "seller/_nav.html" %}
-<table class="table table-sm bg-white">
-<thead><tr><th>Case</th><th>Order</th><th>Customer</th><th>Reason</th><th>Remedy</th><th>Deadline</th><th>Status</th></tr></thead>
-<tbody>{% for c in cases %}<tr><td><a href="{{ url_for('returns.seller_detail', case_id=c.id) }}">#{{ c.id }}</a></td><td>#{{ c.order_id }}</td><td>{{ c.customer.name }}</td><td>{{ c.reason }}</td><td>{{ c.remedy|replace('_',' ') }}</td><td class="small">{{ c.seller_deadline|dt }}</td><td>{{ status_badge(c.status) }}</td></tr>
-{% else %}<tr><td colspan="7" class="text-muted">No return requests.</td></tr>{% endfor %}</tbody></table>
-{% endblock %}

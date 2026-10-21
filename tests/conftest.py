@@ -1,29 +1,19 @@
-import itertools
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
 from marketplacex.app import create_app
 from marketplacex.extensions import db
 
-_seq = itertools.count(1)
-
 
 @pytest.fixture
-def app(tmp_path):
-    app = create_app({
-        "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite://",
-        "SECRET_KEY": "t",
-        "PAYMENT_WEBHOOK_SECRET": "whsec",
-        "NOTIFICATION_FAILURE_RATE": 0,
-        "UPLOAD_DIR": str(tmp_path / "uploads"),
-        "GEMINI_API_KEY": "",
-    })
+def app():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "SECRET_KEY": "t",
+                      "GEMINI_API_KEY": ""})
     ctx = app.app_context()
     ctx.push()
     db.create_all()
-    from marketplacex.modules.admin import policy
-    policy.ensure_defaults()
     yield app
     db.session.remove()
     db.drop_all()
@@ -35,54 +25,60 @@ def client(app):
     return app.test_client()
 
 
-@pytest.fixture
-def make_user(app):
-    from marketplacex.modules.identity import service as identity
+class _Clock:
+    def __init__(self):
+        self.now = datetime(2026, 10, 1, 12, 0, 0)
 
-    def _make(role="customer", email=None):
-        n = next(_seq)
-        return identity.create_account(email or f"{role}{n}@test", f"{role.title()} {n}", role, "pw12345")
-    return _make
+    def advance(self, seconds: int) -> None:
+        self.now += timedelta(seconds=seconds)
 
 
 @pytest.fixture
-def login():
-    def _login(client, user):
-        with client.session_transaction() as s:
-            s["user_id"] = user.id
-    return _login
+def clock(monkeypatch):
+    c = _Clock()
+    monkeypatch.setattr("marketplacex.clock.now", lambda: c.now)
+    return c
+
+
+def login_as(client, role, customer=None):
+    with client.session_transaction() as s:
+        s["role"] = role
+        if customer is not None:
+            s["customer_id"] = customer.id
 
 
 @pytest.fixture
-def seeded(app):
-    from marketplacex import seed
-    seed.seed_all_for_tests()
-    return True
+def demo(app):
+    from marketplacex.modules.catalog.models import Category, Product, ProductImage
+    from marketplacex.modules.identity.models import Address, Customer, FullName
+    from marketplacex.modules.search.images import feature_vector, pack, solid_image
 
+    phones, books = Category(name="Phones"), Category(name="Books")
+    db.session.add_all([phones, books])
 
-@pytest.fixture
-def alice(seeded):
-    from helpers import alice_user
-    return alice_user()
+    def product(cat, title, brand, price, stock, rating, rgb=None):
+        p = Product(category=cat, title=title, brand=brand, price=price, stock_quantity=stock, avg_rating=rating)
+        if rgb:
+            p.images.append(ProductImage(url=f"https://img.test/{title}.jpg",
+                                         feature_vector=pack(feature_vector(solid_image(rgb)))))
+        db.session.add(p)
+        return p
 
+    iphone = product(phones, "Apple iPhone 15", "Apple", 20_000_000, 5, 4.8, (220, 30, 30))
+    galaxy = product(phones, "Samsung Galaxy S24", "Samsung", 15_000_000, 3, 4.5, (30, 30, 220))
+    book = product(books, "Sách Đắc Nhân Tâm", "Unbranded", 100_000, 50, 4.9, (30, 200, 30))
+    cheap = product(books, "Bookmark", "Unbranded", 20_000, 0, 4.0)
 
-@pytest.fixture
-def make_order(seeded):
-    from helpers import alice_user, offer_id
-    from marketplacex.modules.admin import policy
-    from marketplacex.modules.catalog import service as catalog
-    from marketplacex.modules.order.models import Order, OrderItem
+    def customer(email, names, phone, addr):
+        c = Customer(email=email, phone_number=phone, full_name=FullName(
+            first_name=names[0], middle_name=names[1], last_name=names[2]), address=Address(**addr))
+        db.session.add(c)
+        return c
 
-    def _make(status="Draft", key="P03", qty=1):
-        o = catalog.get_offer(offer_id(key))
-        a = alice_user()
-        order = Order(group_id=0, attempt_id="test", shop_id=o.shop_id, customer_id=a.id, status=status,
-                      address_snapshot=a.addresses[0].as_dict(), merchandise_vnd=o.price_vnd * qty,
-                      discount_vnd=0, shipping_vnd=28000, total_vnd=o.price_vnd * qty + 28000,
-                      created_at=policy.now())
-        order.items.append(OrderItem(offer_id=o.id, title_snapshot=o.product.title, variant_snapshot=o.variant.name,
-                                     unit_price_vnd=o.price_vnd, qty=qty, discount_vnd=0))
-        db.session.add(order)
-        db.session.commit()
-        return order
-    return _make
+    alice = customer("alice@demo", ("Alice", "", "Nguyen"), "0912345678",
+                     dict(ward="Trang Tien", street="Trang Tien", detail="12, Hoan Kiem, Hanoi"))
+    binh = customer("binh@demo", ("Binh", "Van", "Tran"), "0933111222",
+                    dict(ward="Ben Nghe", street="Le Loi", detail="45, District 1, Ho Chi Minh City"))
+    db.session.commit()
+    return SimpleNamespace(phones=phones, books=books, iphone=iphone, galaxy=galaxy, book=book, cheap=cheap,
+                           alice=alice, binh=binh)

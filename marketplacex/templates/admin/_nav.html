@@ -1,3 +1,0 @@
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><h1 class="h4 mb-0 me-3">Admin Portal</h1>
-<nav class="nav nav-pills small">{% for ep, label in [('admin.dashboard','Operations'),('admin.moderation','Govern users & content'),('admin.categories','Taxonomy'),('admin.campaigns','Campaigns'),('admin.policy_page','Platform policy'),('admin.users','Users'),('cases.dashboard','Cases'),('admin.audit_log','Audit log')] %}
-<a class="nav-link {{ 'active' if request.endpoint == ep }}" href="{{ url_for(ep) }}">{{ label }}</a>{% endfor %}</nav></div>

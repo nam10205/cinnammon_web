@@ -8,37 +8,50 @@ from .errors import Forbidden
 from .extensions import db
 
 
-def current_user():
-    if "current_user" not in g:
-        from .modules.identity.models import Account
-        uid = session.get("user_id")
-        u = db.session.get(Account, uid) if uid else None
-        if u is not None and u.status != "active":
-            u = None
-        g.current_user = u
-    return g.current_user
+def current_role() -> str | None:
+    return session.get("role")
 
 
-def login_user(user) -> None:
+def current_customer():
+    if "current_customer" not in g:
+        from .modules.identity.models import Customer
+        cid = session.get("customer_id") if session.get("role") == "customer" else None
+        g.current_customer = db.session.get(Customer, cid) if cid else None
+    return g.current_customer
+
+
+def login_customer(customer) -> None:
     session.clear()
-    session["user_id"] = user.id
-    g.current_user = user
+    session["role"] = "customer"
+    session["customer_id"] = customer.id
+    g.current_customer = customer
 
 
-def logout_user() -> None:
+def login_staff(role: str) -> None:
+    if role not in ("seller", "admin"):
+        raise ValueError(role)
     session.clear()
-    g.current_user = None
+    session["role"] = role
+    g.current_customer = None
+
+
+def logout() -> None:
+    session.clear()
+    g.current_customer = None
 
 
 def require_role(*roles):
     def deco(fn):
         @wraps(fn)
         def wrapper(*a, **kw):
-            u = current_user()
-            if u is None:
+            role = current_role()
+            if role is None:
                 return redirect(url_for("identity.login", next=request.path))
-            if roles and u.role not in roles:
+            if roles and role not in roles:
                 raise Forbidden("You do not have access to this page")
+            if role == "customer" and current_customer() is None:
+                session.clear()
+                return redirect(url_for("identity.login", next=request.path))
             return fn(*a, **kw)
         return wrapper
     return deco

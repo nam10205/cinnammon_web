@@ -10,9 +10,7 @@ class Category(db.Model):
     id = db.Column("categoryID", db.Integer, primary_key=True)
     name = db.Column("name", db.String(255), nullable=False)
     description = db.Column("description", db.String(255), default="")
-    parent_id = db.Column("parentID", db.Integer, db.ForeignKey("Category.categoryID"))
-    attribute_schema = db.Column("attributeSchema", db.JSON, default=list)
-    children = db.relationship("Category", backref=db.backref("parent", remote_side=[id]), order_by="Category.id")
+    products = db.relationship("Product", back_populates="category", order_by="Product.id")
 
 
 class Product(db.Model):
@@ -22,20 +20,13 @@ class Product(db.Model):
     title = db.Column("name", db.String(255), nullable=False)
     brand = db.Column("brandName", db.String(255), default="")
     description = db.Column("description", db.String(255), default="")
-    # Derived from offers, stock ledgers and reviews by catalog.service.sync_product.
     price = db.Column("price", db.Integer, nullable=False, default=0)
     stock_quantity = db.Column("stockQuantity", db.Integer, nullable=False, default=0)
     avg_rating = db.Column("avgRating", db.Float, nullable=False, default=0.0)
     created_at = db.Column("createdAt", db.DateTime, default=datetime.utcnow)
     updated_at = db.Column("updatedAt", db.DateTime, default=datetime.utcnow)
-    shop_id = db.Column("shopID", db.Integer, db.ForeignKey("shop.id"), nullable=False, index=True)
-    status = db.Column("status", db.String(20), nullable=False, default="draft")
-    attributes = db.Column("attributes", db.JSON, default=dict)
-    moderation_reason = db.Column("moderationReason", db.String(500))
-    shop = db.relationship("Shop")
-    category = db.relationship("Category")
-    variants = db.relationship("Variant", backref="product", order_by="Variant.id")
-    images = db.relationship("ProductImage", backref="product", order_by="[ProductImage.sort_order, ProductImage.id]",
+    category = db.relationship("Category", back_populates="products")
+    images = db.relationship("ProductImage", back_populates="product", order_by="ProductImage.id",
                              cascade="all, delete-orphan")
 
     @property
@@ -54,35 +45,4 @@ class ProductImage(db.Model):
     product_id = db.Column("productID", db.Integer, db.ForeignKey("Product.productID"), nullable=False, index=True)
     url = db.Column("imageUrl", db.String(500), nullable=False)
     feature_vector = db.Column("featureVector", db.LargeBinary, nullable=True)
-    sort_order = db.Column("sortOrder", db.Integer, nullable=False, default=0)
-
-
-class Variant(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("Product.productID"), nullable=False)
-    name = db.Column(db.String(80), nullable=False)
-    sku = db.Column(db.String(64))
-    offer = db.relationship("Offer", uselist=False, backref="variant")
-    __table_args__ = (db.UniqueConstraint("product_id", "name"),)
-
-
-class Offer(db.Model):
-    """A sellable offer: exactly one shop and one product variant (BR01)."""
-    id = db.Column(db.Integer, primary_key=True)
-    shop_id = db.Column(db.Integer, db.ForeignKey("shop.id"), nullable=False)
-    variant_id = db.Column(db.Integer, db.ForeignKey("variant.id"), nullable=False)
-    price_vnd = db.Column(db.Integer, nullable=False)
-    original_price_vnd = db.Column(db.Integer)
-    purchase_limit = db.Column(db.Integer, nullable=False, default=10)
-    sold_count = db.Column(db.Integer, nullable=False, default=0)
-    rating_avg = db.Column(db.Float, nullable=False, default=0.0)
-    rating_count = db.Column(db.Integer, nullable=False, default=0)
-    # Rating imported with the listing; restored when every review folded into rating_avg is hidden.
-    base_rating_avg = db.Column(db.Float, nullable=False, default=0.0)
-    version = db.Column(db.Integer, nullable=False, default=1)
-    shop = db.relationship("Shop")
-    __table_args__ = (db.UniqueConstraint("shop_id", "variant_id"),)
-
-    @property
-    def product(self):
-        return self.variant.product
+    product = db.relationship("Product", back_populates="images")

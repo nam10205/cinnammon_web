@@ -1,8 +1,0 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="row justify-content-center"><div class="col-md-5"><div class="card shadow-sm"><div class="card-body">
-  <h1 class="h4 mb-3">Recover account</h1>
-  <form method="post"><label class="form-label" for="email">Email</label><input class="form-control mb-3" id="email" name="email" type="email" required><button class="btn btn-primary w-100">Send recovery email</button></form>
-  {% if link %}<div class="alert alert-secondary mt-3 small">Simulated email: <a href="{{ link }}">reset your password</a></div>{% endif %}
-</div></div></div></div>
-{% endblock %}
