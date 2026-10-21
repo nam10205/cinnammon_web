@@ -1,9 +1,13 @@
 {% extends "base.html" %}
+{% from "_cards.html" import status, punch_sm, empty %}
 {% block title %}Admin orders · MarketplaceX{% endblock %}
 {% block content %}
 {% with active='orders' %}{% include "admin/_nav.html" %}{% endwith %}
-<h1 class="h3 mb-3">Orders</h1>
-<table class="table align-middle">
+<h1 class="page-title mb-4">Orders</h1>
+{% if not orders %}
+  {{ empty('box-seam', 'No orders yet.') }}
+{% else %}
+<div class="table-wrap"><table class="table align-middle">
   <thead><tr><th>#</th><th>Customer</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">Total</th><th>Payment</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for o in orders %}
@@ -13,17 +17,16 @@
       <td>{{ o.product.title }}</td>
       <td class="text-end">{{ o.quantity }}</td>
       <td class="text-end">{{ o.total_price|vnd }}</td>
-      <td>{{ o.payment_method }} · {{ o.payment_status }}</td>
-      <td><span class="badge text-bg-secondary">{{ o.status }}</span></td>
+      <td>{{ o.payment_method }} · {{ status(o.payment_status) }}</td>
+      <td>{{ punch_sm(o) }} {{ status(o.status) }}</td>
       <td class="text-end">
         {% if o.status in ('placed', 'processing') %}
         <form method="post" action="{{ url_for('admin.cancel_order', order_id=o.id) }}"><button class="btn btn-sm btn-outline-danger">Cancel</button></form>
         {% endif %}
       </td>
     </tr>
-  {% else %}
-    <tr><td colspan="8" class="text-muted">No orders yet.</td></tr>
   {% endfor %}
   </tbody>
-</table>
+</table></div>
+{% endif %}
 {% endblock %}

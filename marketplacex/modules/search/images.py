@@ -1,6 +1,8 @@
-"""Image encoder: a 4x4x4 RGB colour histogram, L2-normalised, serves as the feature vector (report §13)."""
+"""Image encoder: a 4x4x4 RGB colour histogram, L2-normalised, serves as the feature vector (report §13).
+Photo search first asks Gemini to name the product and runs that as a text search; colour is the fallback."""
 from __future__ import annotations
 
+import base64
 import io
 import math
 import struct
@@ -24,6 +26,29 @@ def feature_vector(image_bytes: bytes) -> list[float]:
         hist[(r // 64) * 16 + (g // 64) * 4 + (b // 64)] += 1.0
     norm = math.sqrt(sum(x * x for x in hist))
     return [x / norm for x in hist] if norm else hist
+
+
+LABEL_PROMPT = ("You name products in photos for a Vietnamese online shop. Reply with only 1 to 3 search words: "
+                "the brand and product line if you can recognise them (e.g. \"iPhone\", \"Samsung Galaxy\", \"Nike\"), "
+                "otherwise the product type in Vietnamese as the shop's titles say it (e.g. \"nồi chiên\", \"tai nghe\", "
+                "\"bàn phím\"). No model numbers, colours or sizes. Shop categories: {categories}. "
+                "If there is no product, reply with nothing.")
+
+
+def describe(image_bytes: bytes, categories: list[str]) -> str | None:
+    """Ask Gemini what the photo shows, as a text query. None when Gemini is unavailable or unsure."""
+    from ..assistant.service import AssistantUnavailable, _call_gemini
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img.thumbnail((512, 512))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    try:
+        text = _call_gemini(LABEL_PROMPT.format(categories=", ".join(categories)), [{"role": "user", "parts": [
+            {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(buf.getvalue()).decode()}}]}], timeout=45)
+    except AssistantUnavailable:
+        return None
+    text = text.strip().strip('"“”').strip()
+    return text[:120] or None
 
 
 def pack(vec: list[float]) -> bytes:

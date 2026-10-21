@@ -1,19 +1,50 @@
 {% extends "base.html" %}
-{% from "_cards.html" import product_card %}
+{% from "_cards.html" import product_card, empty %}
 {% block title %}{{ heading }} · MarketplaceX{% endblock %}
 {% block content %}
-<h1 class="h3">{{ heading }}</h1>
-<form class="row g-2 mb-4" method="post" action="{{ url_for('search.search_image') }}" enctype="multipart/form-data">
-  <div class="col-auto"><input class="form-control" type="file" name="photo" accept="image/*" aria-label="Photo"></div>
-  <div class="col-auto"><button class="btn btn-outline-primary"><i class="bi bi-camera"></i> Search by photo</button></div>
-</form>
-{% if history %}
-<div class="mb-4">
-  <h2 class="h6 text-muted">Recent searches</h2>
-  <ul class="list-inline">
-    {% for h in history %}<li class="list-inline-item"><span class="badge text-bg-light">{{ h.keyword }} <span class="text-muted">({{ h.search_type }})</span></span></li>{% endfor %}
-  </ul>
+<h1 class="page-title">{{ heading }}</h1>
+<p class="lede">{{ products|length }} result{{ '' if products|length == 1 else 's' }}</p>
+{% if photo_note %}<p class="hint mb-3"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ photo_note }}</p>{% endif %}
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <form id="photo" class="panel h-100 d-flex flex-wrap align-items-center gap-2" method="post" action="{{ url_for('search.search_image') }}" enctype="multipart/form-data">
+      <i class="bi bi-camera fs-4 text-muted me-1" aria-hidden="true"></i>
+      <div class="flex-fill" style="min-width:200px">
+        <div class="fw-medium">Search by photo</div>
+        <div class="hint">Upload a picture, then crop it to the product you want.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <label class="btn btn-outline-secondary file-pick mb-0"><input type="file" name="photo" id="photo-file" accept="image/*" class="visually-hidden"><span>Choose photo</span></label>
+        <button class="btn btn-primary" id="photo-go">Search</button>
+      </div>
+      <div class="crop-box w-100" id="crop-box" hidden>
+        <div class="crop-stage" id="crop-stage"></div>
+        <div class="crop-bar">
+          <span class="hint"><i class="bi bi-crop" aria-hidden="true"></i> Drag the box around the product. Only the cropped part is searched.</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="crop-reset">Reset</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% if history %}
+  <div class="col-lg-5">
+    <div class="panel h-100">
+      <div class="fw-medium mb-2">Your recent searches</div>
+      <div class="d-flex flex-wrap gap-2">
+        {% for h in history %}<span class="st st-placed" style="text-transform:none"><i class="bi bi-{{ {'voice': 'mic', 'image': 'camera'}.get(h.search_type, 'search') }}" aria-label="{{ h.search_type }}"></i>{{ h.keyword }} <span class="text-muted fw-normal">({{ h.search_type }})</span></span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
+{% if products %}
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">{% for p in products %}{{ product_card(p) }}{% endfor %}</div>
+{% else %}
+{{ empty('search', 'No products found. Try another word, your voice, or a photo.') }}
 {% endif %}
-<div class="row row-cols-2 row-cols-md-4 g-3">{% for p in products %}{{ product_card(p) }}{% else %}<p class="text-muted">No products found.</p>{% endfor %}</div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="{{ url_for('static', filename='js/photo_crop.js') }}"></script>
 {% endblock %}

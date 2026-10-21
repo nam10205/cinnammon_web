@@ -2,9 +2,8 @@
 {% block title %}Admin · MarketplaceX{% endblock %}
 {% block content %}
 {% with active='dashboard' %}{% include "admin/_nav.html" %}{% endwith %}
-<h1 class="h3 mb-3">Overview</h1>
-<table class="table w-auto">
-  <thead><tr><th>Table</th><th class="text-end">Rows</th></tr></thead>
-  <tbody>{% for name, n in counts %}<tr><td>{{ name }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}</tbody>
-</table>
+<h1 class="page-title mb-4">Overview</h1>
+<div class="stat-grid">
+  {% for name, n in counts %}<div><div class="k">{{ name }}</div><div class="v">{{ n }}</div></div>{% endfor %}
+</div>
 {% endblock %}

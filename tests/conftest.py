@@ -10,7 +10,7 @@ from marketplacex.extensions import db
 @pytest.fixture
 def app():
     app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://", "SECRET_KEY": "t",
-                      "GEMINI_API_KEY": ""})
+                      "GEMINI_API_KEY": "", "GEMINI_API_KEYS": []})
     ctx = app.app_context()
     ctx.push()
     db.create_all()

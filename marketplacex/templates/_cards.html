@@ -1,17 +1,27 @@
 {% macro product_card(p) %}
 <div class="col">
-  <a class="card h-100 text-decoration-none text-body" href="/products/{{ p.id }}">
-    {% if p.image_url %}
-    <img src="{{ p.image_url }}" class="card-img-top" alt="{{ p.title }}" loading="lazy" style="aspect-ratio:1/1;object-fit:contain">
-    {% else %}
-    <div class="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style="aspect-ratio:1/1"><i class="bi bi-image fs-1"></i></div>
-    {% endif %}
-    <div class="card-body">
-      <div class="small text-muted">{{ p.brand }}</div>
-      <div class="card-title h6">{{ p.title }}</div>
-      <div class="fw-bold text-danger">{{ p.price|vnd }}</div>
-      <div class="small text-warning"><i class="bi bi-star-fill"></i> {{ '%.1f'|format(p.avg_rating or 0) }}</div>
+  <a class="plate ink-{{ p.category_id % 8 }}" href="/products/{{ p.id }}">
+    <div class="plate-img">
+      {% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.title }}" loading="lazy">{% else %}<i class="bi bi-image" aria-hidden="true"></i>{% endif %}
+    </div>
+    <div class="plate-body">
+      <div class="plate-title">{{ p.title }}</div>
+      {% if p.brand %}<div class="plate-brand">{{ p.brand }}</div>{% endif %}
+      <div class="plate-foot">
+        <span class="tag">{{ p.price|vnd }}</span>
+        <span class="rating"><i class="bi bi-star-fill" aria-hidden="true"></i>{{ '%.1f'|format(p.avg_rating or 0) }}</span>
+      </div>
     </div>
   </a>
 </div>
 {% endmacro %}
+
+{% macro status(s) %}<span class="st st-{{ s }}">{{ s }}</span>{% endmacro %}
+
+{% macro punch_sm(o) %}
+{%- set steps = ['placed', 'processing', 'shipped', 'delivered'] -%}
+{%- set reached = 1 if o.status == 'cancelled' else steps.index(o.status) + 1 -%}
+<span class="punch-sm {{ 'cancel' if o.status == 'cancelled' }}" aria-hidden="true">{% for s in steps %}<i class="{{ 'on' if loop.index <= reached }}"></i>{% endfor %}</span>
+{%- endmacro %}
+
+{% macro empty(icon, text) %}<div class="empty"><i class="bi bi-{{ icon }}" aria-hidden="true"></i>{{ text }}{{ caller() if caller }}</div>{% endmacro %}

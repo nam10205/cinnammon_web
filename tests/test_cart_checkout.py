@@ -95,3 +95,29 @@ def test_duplicate_checkout_within_window_is_refused(demo, clock):
     clock.advance(6)
     service.checkout(demo.alice, {demo.book.id: 1}, "cod")
     assert Order.query.count() == 2
+
+def test_delivery_choice_sets_fee_and_is_read_back(demo):
+    orders = service.checkout(demo.alice, {demo.book.id: 1, demo.iphone.id: 1}, "cod", delivery="vindrone")
+    assert [o.shipping_fee for o in orders] == [65_000, 0]
+    assert {service.delivery_of(o) for o in orders} == {"vindrone"}
+
+def test_only_vinfast_ships_free_and_free_reads_back_as_vinfast(demo):
+    assert service.shipping_fee(500_000, "vinair") == 290_000
+    (o,) = service.checkout(demo.alice, {demo.iphone.id: 1}, "cod")
+    assert o.shipping_fee == 0 and service.delivery_of(o) == "vinfast"
+    assert len({d["fee"] for d in service.DELIVERIES.values()} | {0}) == len(service.DELIVERIES) + 1
+
+def test_unknown_delivery_is_refused(demo):
+    with pytest.raises(ValidationError, match="delivery"):
+        service.checkout(demo.alice, {demo.book.id: 1}, "cod", delivery="teleport")
+
+def test_checkout_page_lists_couriers_and_order_page_has_map(client, demo, login_as):
+    login_as(client, "customer", demo.alice)
+    client.post("/cart/add", data={"product_id": demo.book.id, "qty": 1})
+    page = client.get("/checkout").get_data(as_text=True)
+    assert all(n in page for n in ("Vinfast", "Vinno", "Vinair", "Vinsubmarine", "Vindrone", "Vinbot"))
+    client.post("/checkout", data={"payment_method": "cod", "delivery": "vinsubmarine"})
+    o = Order.query.one()
+    assert o.shipping_fee == 150_000
+    r = client.get(f"/orders/{o.id}").get_data(as_text=True)
+    assert 'id="track-map"' in r and 'data-mode="vinsubmarine"' in r

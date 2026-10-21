@@ -4,31 +4,52 @@
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
   <li class="breadcrumb-item"><a href="/">Home</a></li>
   <li class="breadcrumb-item"><a href="/categories/{{ p.category_id }}">{{ p.category.name }}</a></li>
-  <li class="breadcrumb-item active">{{ p.title }}</li>
+  <li class="breadcrumb-item active text-truncate" style="max-width:40ch">{{ p.title }}</li>
 </ol></nav>
-<div class="row g-4">
-  <div class="col-md-6">
-    {% for img in p.images %}
-    <img src="{{ img.url }}" class="img-fluid mb-2" alt="{{ p.title }}" style="max-height:480px;object-fit:contain">
-    {% else %}
-    <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height:320px"><i class="bi bi-image fs-1"></i></div>
-    {% endfor %}
-  </div>
-  <div class="col-md-6">
-    <div class="text-muted">{{ p.brand }}</div>
-    <h1 class="h3">{{ p.title }}</h1>
-    <div class="text-warning mb-2"><i class="bi bi-star-fill"></i> {{ '%.1f'|format(p.avg_rating or 0) }}</div>
-    <div class="fs-3 fw-bold text-danger mb-2">{{ p.price|vnd }}</div>
-    <div class="mb-3">{% if p.stock_quantity > 0 %}<span class="text-success">{{ p.stock_quantity }} in stock</span>{% else %}<span class="text-danger">Out of stock</span>{% endif %}</div>
-    <p>{{ p.description }}</p>
-    {% if has_endpoint('cart.add') and p.stock_quantity > 0 %}
-    <form method="post" action="/cart/add" class="d-flex gap-2 mb-3">
-      <input type="hidden" name="product_id" value="{{ p.id }}">
-      <input class="form-control w-auto" type="number" name="qty" value="1" min="1" max="{{ p.stock_quantity }}" aria-label="Quantity">
-      <button class="btn btn-primary"><i class="bi bi-cart-plus"></i> Add to cart</button>
-    </form>
+<div class="row g-5 ink-{{ p.category_id % 8 }}">
+  <div class="col-lg-7">
+    <div class="gallery-main">
+      {% if p.images %}<img id="gallery-main" src="{{ p.images[0].url }}" alt="{{ p.title }}">
+      {% else %}<i class="bi bi-image fs-1 text-muted" aria-hidden="true"></i>{% endif %}
+    </div>
+    {% if p.images|length > 1 %}
+    <div class="thumbs" role="group" aria-label="Product images">
+      {% for img in p.images %}
+      <button type="button" data-src="{{ img.url }}" aria-label="Image {{ loop.index }}" aria-current="{{ 'true' if loop.first else 'false' }}"><img src="{{ img.url }}" alt="" loading="lazy"></button>
+      {% endfor %}
+    </div>
     {% endif %}
-    {% if has_vector %}<a class="btn btn-outline-secondary" href="/search?similar={{ p.id }}"><i class="bi bi-images"></i> Find similar</a>{% endif %}
+  </div>
+  <div class="col-lg-5">
+    <div class="buybox">
+      <h1>{{ p.title }}</h1>
+      <span class="tag tag-lg">{{ p.price|vnd }}</span>
+      <div class="facts">
+        <span class="rating"><i class="bi bi-star-fill" aria-hidden="true"></i>{{ '%.1f'|format(p.avg_rating or 0) }} rating</span>
+        {% if p.stock_quantity > 0 %}<span class="in">{{ p.stock_quantity }} in stock</span>{% else %}<span class="out">Out of stock</span>{% endif %}
+        {% if p.brand %}<span>{{ p.brand }}</span>{% endif %}
+        <span>{{ p.category.name }}</span>
+      </div>
+      {% if has_endpoint('cart.add') and p.stock_quantity > 0 %}
+      <form method="post" action="/cart/add" class="d-flex gap-2 mb-2">
+        <input type="hidden" name="product_id" value="{{ p.id }}">
+        <input class="form-control qty" type="number" name="qty" value="1" min="1" max="{{ p.stock_quantity }}" aria-label="Quantity">
+        <button class="btn btn-primary btn-lg flex-fill"><i class="bi bi-bag-plus me-1" aria-hidden="true"></i> Add to cart</button>
+      </form>
+      {% endif %}
+      {% if has_vector %}<a class="btn btn-outline-secondary w-100" href="/search?similar={{ p.id }}"><i class="bi bi-images me-1" aria-hidden="true"></i> Find similar</a>{% endif %}
+      {% if p.description %}<p class="desc">{{ p.description }}</p>{% endif %}
+    </div>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.thumbs button').forEach(function (b, _, all) {
+  b.addEventListener('click', function () {
+    document.getElementById('gallery-main').src = b.dataset.src;
+    all.forEach(function (x) { x.setAttribute('aria-current', x === b ? 'true' : 'false'); });
+  });
+});
+</script>
 {% endblock %}

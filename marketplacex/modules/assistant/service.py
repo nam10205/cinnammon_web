@@ -87,22 +87,39 @@ def build_system_prompt(question: str, customer) -> str:
     )
 
 
-def _call_gemini(system: str, contents: list) -> str:
-    key = current_app.config.get("GEMINI_API_KEY")
-    if not key:
+def _gemini_keys() -> list[str]:
+    keys = [current_app.config.get("GEMINI_API_KEY")] + list(current_app.config.get("GEMINI_API_KEYS") or [])
+    return list(dict.fromkeys(k for k in keys if k))
+
+
+def _call_gemini(system: str, contents: list, timeout: float = 30) -> str:
+    """Free-tier keys have a small daily quota, so a key that answers 429 hands over to the next one."""
+    keys = _gemini_keys()
+    if not keys:
         raise AssistantUnavailable("The assistant is unavailable (no GEMINI_API_KEY configured).")
     body = json.dumps({"systemInstruction": {"parts": [{"text": system}]}, "contents": contents,
                        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1024,
                                              "thinkingConfig": {"thinkingBudget": 0}}}).encode()
-    req = urllib.request.Request(GEMINI_URL.format(model=current_app.config.get("GEMINI_MODEL", "gemini-3.5-flash")),
-                                 data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.load(resp)
-        return "".join(p.get("text", "") for p in data["candidates"][0]["content"]["parts"]).strip()
-    except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError) as e:
-        current_app.logger.warning("Gemini call failed: %s", e)
-        raise AssistantUnavailable("The assistant is temporarily unavailable. Please try again later.")
+    url = GEMINI_URL.format(model=current_app.config.get("GEMINI_MODEL", "gemini-3.5-flash"))
+    start = current_app.extensions.get("gemini_key", 0) % len(keys)
+    for n in range(len(keys)):
+        i = (start + n) % len(keys)
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": keys[i]})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.load(resp)
+            current_app.extensions["gemini_key"] = i
+            return "".join(p.get("text", "") for p in data["candidates"][0]["content"]["parts"]).strip()
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                current_app.logger.warning("Gemini key %d of %d is out of quota, trying the next", i + 1, len(keys))
+                continue
+            current_app.logger.warning("Gemini call failed: %s", e)
+            break
+        except (OSError, KeyError, IndexError, ValueError) as e:  # OSError covers URLError and socket.timeout
+            current_app.logger.warning("Gemini call failed: %s", e)
+            break
+    raise AssistantUnavailable("The assistant is temporarily unavailable. Please try again later.")
 
 
 def ask(question: str, history: list, customer) -> str:

@@ -34,6 +34,23 @@ def home_sections(per_category: int = 8) -> list[tuple[Category, list[Product]]]
     return out
 
 
+def featured(n: int = 5) -> list[Product]:
+    """The priciest well-rated, in-stock product of each category, priciest categories first."""
+    picks = []
+    for c in categories():
+        p = (db.session.query(Product).options(selectinload(Product.images), selectinload(Product.category))
+             .filter(Product.category_id == c.id, Product.stock_quantity > 0, Product.avg_rating >= 4.5)
+             .order_by(Product.price.desc(), Product.id).first())
+        if p and p.images:
+            picks.append(p)
+    return sorted(picks, key=lambda p: -p.price)[:n]
+
+
+def category_counts() -> dict[int, int]:
+    rows = db.session.query(Product.category_id, db.func.count(Product.id)).group_by(Product.category_id)
+    return dict(rows.all())
+
+
 def category_products(category_id: int, sort: str = "rating", min_price: int | None = None,
                       max_price: int | None = None, page: int = 1,
                       per_page: int = 24) -> tuple[list[Product], int]:

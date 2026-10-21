@@ -1,27 +1,31 @@
 {% extends "base.html" %}
-{% from "_cards.html" import product_card %}
+{% from "_cards.html" import product_card, empty %}
 {% block title %}{{ category.name }} · MarketplaceX{% endblock %}
 {% block content %}
-<h1 class="h3">{{ category.name }}</h1>
-<p class="text-muted">{{ total }} product{{ '' if total == 1 else 's' }}</p>
-<form class="row g-2 mb-4" method="get">
-  <div class="col-auto">
-    <select class="form-select" name="sort" aria-label="Sort">
-      {% for key, label in [('rating', 'Top rated'), ('price_asc', 'Price: low to high'), ('price_desc', 'Price: high to low'), ('newest', 'Newest')] %}
-      <option value="{{ key }}" {{ 'selected' if sort == key }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-auto"><input class="form-control" type="number" min="0" name="min_price" placeholder="Min price" value="{{ min_price if min_price is not none }}"></div>
-  <div class="col-auto"><input class="form-control" type="number" min="0" name="max_price" placeholder="Max price" value="{{ max_price if max_price is not none }}"></div>
-  <div class="col-auto"><button class="btn btn-primary">Apply</button></div>
+<div class="ink-{{ category.id % 8 }}">
+<h1 class="page-title">{{ category.name }}</h1>
+<p class="lede">{{ total }} product{{ '' if total == 1 else 's' }}{% if category.description %} · {{ category.description }}{% endif %}</p>
+<form class="d-flex flex-wrap gap-2 align-items-center mb-4" method="get">
+  <select class="form-select w-auto" name="sort" aria-label="Sort">
+    {% for key, label in [('rating', 'Top rated'), ('price_asc', 'Price: low to high'), ('price_desc', 'Price: high to low'), ('newest', 'Newest')] %}
+    <option value="{{ key }}" {{ 'selected' if sort == key }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input class="form-control w-auto" style="max-width:150px" type="number" min="0" name="min_price" placeholder="Min price ₫" aria-label="Min price" value="{{ min_price if min_price is not none }}">
+  <input class="form-control w-auto" style="max-width:150px" type="number" min="0" name="max_price" placeholder="Max price ₫" aria-label="Max price" value="{{ max_price if max_price is not none }}">
+  <button class="btn btn-primary">Apply</button>
 </form>
-<div class="row row-cols-2 row-cols-md-4 g-3">{% for p in products %}{{ product_card(p) }}{% else %}<p class="text-muted">No products match.</p>{% endfor %}</div>
+{% if products %}
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">{% for p in products %}{{ product_card(p) }}{% endfor %}</div>
+{% else %}
+{{ empty('funnel', 'No products match these filters.') }}
+{% endif %}
 {% if pages > 1 %}
-<nav class="mt-4" aria-label="Pages"><ul class="pagination">
+<nav class="mt-5 d-flex justify-content-center" aria-label="Pages"><ul class="pagination">
   {% for n in range(1, pages + 1) %}
   <li class="page-item {{ 'active' if n == page }}"><a class="page-link" href="?sort={{ sort }}&page={{ n }}{% if min_price is not none %}&min_price={{ min_price }}{% endif %}{% if max_price is not none %}&max_price={{ max_price }}{% endif %}">{{ n }}</a></li>
   {% endfor %}
 </ul></nav>
 {% endif %}
+</div>
 {% endblock %}

@@ -18,7 +18,8 @@ def _int_arg(name: str) -> int | None:
 
 @bp.get("/")
 def home():
-    return render_template("customer/home.html", sections=service.home_sections())
+    return render_template("customer/home.html", sections=service.home_sections(),
+                           featured=service.featured(), counts=service.category_counts())
 
 
 @bp.get("/categories/<int:category_id>")

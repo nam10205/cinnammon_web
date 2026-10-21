@@ -44,3 +44,28 @@ def test_similar(client, demo):
 def test_navbar_has_mic_and_mode(client, demo):
     html = client.get("/").get_data(as_text=True)
     assert 'id="mic"' in html and 'name="mode"' in html and "js/voice.js" in html
+
+
+def test_photo_search_runs_gemini_label_as_text_search(client, demo, login_as, monkeypatch):
+    from marketplacex.modules.search import images
+    seen = {}
+    monkeypatch.setattr(images, "describe", lambda data, cats: seen.setdefault("cats", cats) and "điện thoại iPhone")
+    login_as(client, "customer", demo.alice)
+    r = client.post("/search/image", data={"photo": (io.BytesIO(solid_image((220, 30, 30))), "phone.jpg")},
+                    content_type="multipart/form-data")
+    page = r.get_data(as_text=True)
+    assert "Apple iPhone 15" in page and "Results for your photo" in page and 'value="điện thoại iPhone"' in page
+    assert seen["cats"] and SearchHistory.query.filter_by(search_type="image").one().keyword == "phone.jpg"
+
+
+def test_photo_search_falls_back_to_colour_when_gemini_times_out(client, demo, monkeypatch, app):
+    import socket
+    from marketplacex.modules.assistant import service as assistant
+    app.config["GEMINI_API_KEY"] = "test-key"
+    def slow(*a, **k):
+        raise socket.timeout("The read operation timed out")
+    monkeypatch.setattr(assistant.urllib.request, "urlopen", slow)
+    r = client.post("/search/image", data={"photo": (io.BytesIO(solid_image((220, 30, 30))), "red.png")},
+                    content_type="multipart/form-data")
+    page = r.get_data(as_text=True)
+    assert r.status_code == 200 and "Results for your photo" in page and "matched by colour" in page

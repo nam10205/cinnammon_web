@@ -4,48 +4,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}MarketplaceX{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='app.css') }}" rel="stylesheet">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark mx-nav">
+{% set shopper = role in (none, 'customer') %}
+<header class="shell">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="/"><i class="bi bi-bag-heart"></i> MarketplaceX</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
-    <div class="collapse navbar-collapse" id="nav">
-      {% if role in (none, 'customer') and has_endpoint('search.search') %}
-      <form class="d-flex flex-grow-1 mx-lg-4 my-2 my-lg-0" action="{{ url_for('search.search') }}" method="get" role="search">
-        <input class="form-control" name="q" placeholder="Search products, brands" aria-label="Search" value="{{ request.args.get('q', '') }}">
-        <input type="hidden" name="mode" value="text">
-        <button type="button" id="mic" class="btn btn-light ms-2" aria-label="Voice search"><i class="bi bi-mic"></i></button>
-        <button class="btn btn-light ms-2" aria-label="Search"><i class="bi bi-search"></i></button>
-      </form>
+    <a class="wordmark" href="/">MARKETPLACEX</a>
+    {% if shopper and has_endpoint('search.search') %}
+    <form class="shell-search" action="{{ url_for('search.search') }}" method="get" role="search">
+      <input name="q" placeholder="Search products and brands" aria-label="Search" value="{{ search_box if search_box is defined else request.args.get('q', '') }}">
+      <input type="hidden" name="mode" value="text">
+      <button type="button" id="mic" class="icon-btn" aria-label="Voice search" title="Voice search"><i class="bi bi-mic"></i></button>
+      <a class="icon-btn" href="{{ url_for('search.search') }}#photo" aria-label="Search by photo" title="Search by photo"><i class="bi bi-camera"></i></a>
+      <button class="icon-btn go" aria-label="Search"><i class="bi bi-search"></i></button>
+    </form>
+    {% endif %}
+    <ul class="shell-links">
+      {% if role == 'seller' %}<li><span class="role-pill">Seller</span></li>{% elif role == 'admin' %}<li><span class="role-pill">Admin</span></li>{% endif %}
+      {% if shopper and has_endpoint('cart.view') %}
+      <li><a href="{{ url_for('cart.view') }}"><i class="bi bi-bag"></i><span class="label">Cart</span>{% if cart_count %}<span class="count">{{ cart_count }}</span>{% endif %}</a></li>
       {% endif %}
-      <ul class="navbar-nav ms-auto align-items-lg-center">
-        {% if role in (none, 'customer') %}
-          {% if has_endpoint('cart.view') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('cart.view') }}"><i class="bi bi-cart3"></i> Cart{% if cart_count %} <span class="badge rounded-pill bg-warning text-dark">{{ cart_count }}</span>{% endif %}</a></li>{% endif %}
+      {% if role == 'customer' %}
+        {% if has_endpoint('order.my_orders') %}<li><a href="{{ url_for('order.my_orders') }}"><i class="bi bi-box-seam"></i><span class="label">My orders</span></a></li>{% endif %}
+        {% if has_endpoint('identity.profile') %}<li><a href="{{ url_for('identity.profile') }}"><i class="bi bi-person"></i><span class="label">{{ customer.full_name.first_name if customer and customer.full_name else 'Profile' }}</span></a></li>{% endif %}
+      {% elif role == 'seller' %}
+        {% if has_endpoint('seller.products') %}<li><a href="{{ url_for('seller.products') }}"><i class="bi bi-shop"></i><span class="label">Seller Center</span></a></li>{% endif %}
+      {% elif role == 'admin' %}
+        {% if has_endpoint('admin.dashboard') %}<li><a href="{{ url_for('admin.dashboard') }}"><i class="bi bi-grid"></i><span class="label">Admin</span></a></li>{% endif %}
+      {% endif %}
+      {% if role %}
+        {% if has_endpoint('identity.logout') %}
+        <li><form method="post" action="{{ url_for('identity.logout') }}"><button><i class="bi bi-box-arrow-right"></i><span class="label">Log out</span></button></form></li>
         {% endif %}
-        {% if role == 'customer' %}
-          {% if has_endpoint('order.my_orders') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('order.my_orders') }}">My orders</a></li>{% endif %}
-          {% if has_endpoint('identity.profile') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('identity.profile') }}">Profile</a></li>{% endif %}
-        {% elif role == 'seller' %}
-          {% if has_endpoint('seller.products') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('seller.products') }}">Seller Center</a></li>{% endif %}
-        {% elif role == 'admin' %}
-          {% if has_endpoint('admin.dashboard') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Admin</a></li>{% endif %}
-        {% endif %}
-        {% if role %}
-          {% if has_endpoint('identity.logout') %}
-          <li class="nav-item"><form method="post" action="{{ url_for('identity.logout') }}" class="d-inline"><button class="btn btn-link nav-link">Log out</button></form></li>
-          {% endif %}
-        {% else %}
-          {% if has_endpoint('identity.login') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('identity.login') }}">Log in</a></li>{% endif %}
-          {% if has_endpoint('identity.signup') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('identity.signup') }}">Sign up</a></li>{% endif %}
-        {% endif %}
-      </ul>
-    </div>
+      {% else %}
+        {% if has_endpoint('identity.login') %}<li><a href="{{ url_for('identity.login') }}"><i class="bi bi-person"></i><span class="label">Log in</span></a></li>{% endif %}
+        {% if has_endpoint('identity.signup') %}<li><a href="{{ url_for('identity.signup') }}"><span class="label">Sign up</span></a></li>{% endif %}
+      {% endif %}
+    </ul>
+  </div>
+</header>
+{% block subnav %}
+{% if shopper %}
+<nav class="subnav" aria-label="Categories">
+  <div class="container">
+    {% for c in nav_categories() %}
+    <a class="ink-{{ c.id % 8 }} {{ 'active' if request.path == '/categories/%d' % c.id }}" href="/categories/{{ c.id }}">{{ c.name }}</a>
+    {% endfor %}
   </div>
 </nav>
+{% endif %}
+{% endblock %}
 <main class="container py-4">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
@@ -54,10 +68,12 @@
   {% endwith %}
   {% block content %}{% endblock %}
 </main>
-<footer class="text-center text-muted small py-4">Showcase of the MarketplaceX ERD — demo only.</footer>
+<footer class="site-foot">
+  <div class="container"><span class="wordmark">MARKETPLACEX</span>A demo shop built on an 8-table database. Nothing here is charged or shipped.</div>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
 {% block scripts %}{% endblock %}
-{% if role in (none, 'customer') and has_endpoint('assistant.chat') %}{% include "_assistant.html" %}{% endif %}
+{% if shopper and has_endpoint('assistant.chat') %}{% include "_assistant.html" %}{% endif %}
 </body>
 </html>

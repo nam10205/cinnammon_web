@@ -1,45 +1,54 @@
 {% extends "base.html" %}
+{% from "_cards.html" import empty %}
 {% block title %}{{ 'Edit' if product else 'New' }} product · MarketplaceX{% endblock %}
 {% block content %}
 {% with active='products' %}{% include "seller/_nav.html" %}{% endwith %}
-<h1 class="h3 mb-3">{{ 'Edit product' if product else 'New product' }}</h1>
-<form method="post" class="row g-3 mb-4">
-  <div class="col-12"><label class="form-label">Title</label>
-    <input class="form-control" name="title" maxlength="255" required value="{{ product.title if product }}"></div>
-  <div class="col-md-6"><label class="form-label">Category</label>
-    <select class="form-select" name="category_id">
+<h1 class="page-title mb-4">{{ 'Edit product' if product else 'New product' }}</h1>
+<form method="post" class="panel mb-4">
+ <div class="row g-3">
+  <div class="col-12"><label class="form-label" for="title">Title</label>
+    <input class="form-control" id="title" name="title" maxlength="255" required value="{{ product.title if product }}"></div>
+  <div class="col-md-6"><label class="form-label" for="category_id">Category</label>
+    <select class="form-select" id="category_id" name="category_id">
       {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if product and product.category_id == c.id }}>{{ c.name }}</option>{% endfor %}
     </select></div>
-  <div class="col-md-6"><label class="form-label">Brand</label>
-    <input class="form-control" name="brand" maxlength="255" placeholder="Unbranded" value="{{ product.brand if product and product.brand != 'Unbranded' }}"></div>
-  <div class="col-12"><label class="form-label">Description</label>
-    <textarea class="form-control" name="description" maxlength="255" rows="3">{{ product.description if product }}</textarea></div>
-  <div class="col-md-6"><label class="form-label">Price (VND)</label>
-    <input class="form-control" type="number" min="0" name="price" required value="{{ product.price if product else 0 }}"></div>
-  <div class="col-md-6"><label class="form-label">Stock</label>
-    <input class="form-control" type="number" min="0" name="stock" required value="{{ product.stock_quantity if product else 0 }}"></div>
+  <div class="col-md-6"><label class="form-label" for="brand">Brand</label>
+    <input class="form-control" id="brand" name="brand" maxlength="255" placeholder="Unbranded" value="{{ product.brand if product and product.brand != 'Unbranded' }}"></div>
+  <div class="col-12"><label class="form-label" for="description">Description</label>
+    <textarea class="form-control" id="description" name="description" maxlength="255" rows="3">{{ product.description if product }}</textarea></div>
+  <div class="col-md-6"><label class="form-label" for="price">Price (VND)</label>
+    <input class="form-control" id="price" type="number" min="0" name="price" required value="{{ product.price if product else 0 }}"></div>
+  <div class="col-md-6"><label class="form-label" for="stock">Stock</label>
+    <input class="form-control" id="stock" type="number" min="0" name="stock" required value="{{ product.stock_quantity if product else 0 }}"></div>
   <div class="col-12"><button class="btn btn-primary">Save</button>
-    <a class="btn btn-link" href="{{ url_for('seller.products') }}">Back</a></div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('seller.products') }}">Back</a></div>
+ </div>
 </form>
 {% if product %}
-<h2 class="h5">Images</h2>
+<div class="panel">
+<h2 class="panel-title">Images</h2>
+{% if not product.images %}
+  {{ empty('image', 'No images yet.') }}
+{% else %}
 <div class="row g-3 mb-3">
   {% for img in product.images %}
   <div class="col-6 col-md-3">
-    <div class="card">
-      <img src="{{ img.url }}" class="card-img-top" alt="" style="height:140px;object-fit:contain">
-      <div class="card-body p-2 small">
-        {% if img.feature_vector %}<span class="badge text-bg-success">vector ready</span>{% else %}<span class="badge text-bg-warning">no vector</span>{% endif %}
-        <form method="post" action="{{ url_for('seller.delete_image', image_id=img.id) }}" class="mt-2">
-          <button class="btn btn-sm btn-outline-danger">Remove</button></form>
+    <div class="d-flex flex-column gap-2">
+      <img src="{{ img.url }}" alt="" style="width:48px;height:48px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px">
+      <div>
+        {% if img.feature_vector %}<span class="st st-delivered">vector ready</span>{% else %}<span class="st st-placed">no vector</span>{% endif %}
       </div>
+      <form method="post" action="{{ url_for('seller.delete_image', image_id=img.id) }}">
+        <button class="btn btn-sm btn-outline-danger">Remove</button></form>
     </div>
   </div>
-  {% else %}<p class="text-muted">No images yet.</p>{% endfor %}
+  {% endfor %}
 </div>
+{% endif %}
 <form method="post" action="{{ url_for('seller.add_image', product_id=product.id) }}" class="d-flex gap-2">
-  <input class="form-control" name="url" maxlength="500" placeholder="https://… image URL" required>
-  <button class="btn btn-outline-primary text-nowrap">Add image</button>
+  <input class="form-control" name="url" maxlength="500" placeholder="https://… image URL" aria-label="Image URL" required>
+  <button class="btn btn-outline-secondary text-nowrap">Add image</button>
 </form>
+</div>
 {% endif %}
 {% endblock %}

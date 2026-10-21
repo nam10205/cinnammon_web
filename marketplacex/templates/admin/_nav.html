@@ -1,6 +1,6 @@
-<ul class="nav nav-pills mb-3">
-  <li class="nav-item"><a class="nav-link {{ 'active' if active == 'dashboard' }}" href="{{ url_for('admin.dashboard') }}">Overview</a></li>
-  <li class="nav-item"><a class="nav-link {{ 'active' if active == 'categories' }}" href="{{ url_for('admin.categories') }}">Categories</a></li>
-  <li class="nav-item"><a class="nav-link {{ 'active' if active == 'customers' }}" href="{{ url_for('admin.customers') }}">Customers</a></li>
-  <li class="nav-item"><a class="nav-link {{ 'active' if active == 'orders' }}" href="{{ url_for('admin.orders') }}">Orders</a></li>
-</ul>
+<nav class="subnav ops mb-4" style="border:1px solid var(--line);border-radius:var(--radius)" aria-label="Admin"><div class="d-flex gap-2 p-2">
+  <a class="{{ 'active' if active == 'dashboard' }}" href="{{ url_for('admin.dashboard') }}">Overview</a>
+  <a class="{{ 'active' if active == 'categories' }}" href="{{ url_for('admin.categories') }}">Categories</a>
+  <a class="{{ 'active' if active == 'customers' }}" href="{{ url_for('admin.customers') }}">Customers</a>
+  <a class="{{ 'active' if active == 'orders' }}" href="{{ url_for('admin.orders') }}">Orders</a>
+</div></nav>

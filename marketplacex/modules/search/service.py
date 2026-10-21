@@ -27,6 +27,11 @@ def search_text(text: str) -> list[Product]:
         if q.max_price is not None and p.price > q.max_price:
             continue
         s = lexical(q, p)
+        phrase = text.strip().lower()
+        if phrase in (p.title or "").lower():
+            s += 100  # exact phrase, accents included, ranks first
+        elif phrase in (p.description or "").lower():
+            s += 50
         if s > 0:
             scored.append((s, p))
     scored.sort(key=lambda t: (-t[0], -(t[1].avg_rating or 0), t[1].id))

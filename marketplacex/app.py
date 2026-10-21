@@ -69,12 +69,17 @@ def _register_helpers(app: Flask) -> None:
     def has_endpoint(name: str) -> bool:
         return name in app.view_functions
 
+    def nav_categories():
+        from .modules.catalog.models import Category
+        return Category.query.order_by(Category.id).all()
+
     @app.context_processor
     def _ctx():
         cart = session.get("cart", {})
         cart_count = sum(int(q) for q in cart.values()) if isinstance(cart, dict) else 0
         return {"role": auth.current_role(), "customer": auth.current_customer(),
-                "has_endpoint": has_endpoint, "cart_count": cart_count}
+                "has_endpoint": has_endpoint, "cart_count": cart_count,
+                "nav_categories": nav_categories}
 
 
 def _wants_json() -> bool:

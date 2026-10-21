@@ -1,30 +1,67 @@
 {% extends "base.html" %}
+{% from "_cards.html" import status %}
 {% block title %}Order #{{ order.id }} · MarketplaceX{% endblock %}
 {% block content %}
-<a href="{{ url_for('order.my_orders') }}" class="small">&larr; My orders</a>
-<h1 class="h3 my-3">Order #{{ order.id }}</h1>
-<div id="order-progress" data-progress-url="{{ url_for('order.progress_json', order_id=order.id) }}">
-  <ol class="list-group list-group-horizontal mb-3">
+<a href="{{ url_for('order.my_orders') }}" class="small text-decoration-none"><i class="bi bi-arrow-left" aria-hidden="true"></i> My orders</a>
+<div class="d-flex flex-wrap align-items-center gap-3 mt-2 mb-4">
+  <h1 class="page-title m-0">Order #{{ order.id }}</h1>
+  <span id="order-status">{{ status(order.status) }}</span>
+  <span id="order-payment">{{ status(order.payment_status) }}</span>
+</div>
+<div class="panel mb-4" id="order-progress" data-progress-url="{{ url_for('order.progress_json', order_id=order.id) }}">
+  {% set current = (progress.steps|selectattr('done')|list|last).name %}
+  <ol class="punch {{ 'is-cancelled' if order.status == 'cancelled' }}" aria-label="Shipping progress">
   {% for s in progress.steps %}
-    <li class="list-group-item flex-fill text-center {{ 'list-group-item-success' if s.done }}" data-step="{{ s.name }}">
-      {{ s.name|capitalize }}<div class="small text-muted" data-at>{{ s.at or '' }}</div>
+    <li class="{{ 'is-done' if s.done }} {{ 'is-current' if s.name == current and order.status not in ('delivered', 'cancelled') }}" data-step="{{ s.name }}">
+      <span class="hole" aria-hidden="true"></span>
+      <span>{{ s.name|capitalize }}</span>
+      <span data-at>{{ s.at[11:19] if s.at else '' }}</span>
     </li>
   {% endfor %}
   </ol>
-  <p>Status: <span class="badge text-bg-secondary" id="order-status">{{ order.status }}</span>
-     Payment: <span class="badge text-bg-light border" id="order-payment">{{ order.payment_status }}</span></p>
+  {% if order.status not in ('delivered', 'cancelled') %}<p class="hint text-center mt-3 mb-0">Simulated shipping: each step lands about 20 seconds after the last. This page updates on its own.</p>{% endif %}
 </div>
-<dl class="row">
-  <dt class="col-sm-3">Product</dt><dd class="col-sm-9"><a href="{{ url_for('catalog.product', product_id=order.product.id) }}">{{ order.product.title }}</a> × {{ order.quantity }}</dd>
-  <dt class="col-sm-3">Unit price</dt><dd class="col-sm-9">{{ order.unit_price|vnd }}</dd>
-  <dt class="col-sm-3">Shipping</dt><dd class="col-sm-9">{{ order.shipping_fee|vnd }}</dd>
-  <dt class="col-sm-3">Total</dt><dd class="col-sm-9 fw-bold">{{ order.total_price|vnd }}</dd>
-  <dt class="col-sm-3">Payment method</dt><dd class="col-sm-9">{{ order.payment_method }}</dd>
-  <dt class="col-sm-3">Deliver to</dt><dd class="col-sm-9">{{ order.address.detail }}, {{ order.address.street }}, {{ order.address.ward }}</dd>
-</dl>
-<form method="post" action="{{ url_for('order.cancel', order_id=order.id) }}" id="cancel-form"
-      {% if order.status not in ('placed', 'processing') %}hidden{% endif %}>
-  <button class="btn btn-outline-danger">Cancel order</button>
-</form>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<section class="panel track mb-4" id="track" data-order="{{ order.id }}" data-mode="{{ delivery_key }}" data-icon="{{ delivery.icon }}"
+         data-name="{{ delivery.name }}" data-status="{{ order.status }}" data-step="{{ step_seconds }}"
+         data-shipped="{{ order.shipped_at.isoformat() if order.shipped_at else '' }}" data-now="{{ now.isoformat() }}">
+  <div class="track-head">
+    <span class="ship-icon" aria-hidden="true"><i class="bi bi-{{ delivery.icon }}"></i></span>
+    <div>
+      <h2 class="panel-title m-0">{{ delivery.name }} <span class="text-muted fw-normal">· {{ delivery.blurb }}</span></h2>
+      <p class="track-line m-0" id="track-line">Finding you on the map…</p>
+    </div>
+  </div>
+  <div class="track-map" id="track-map" role="img" aria-label="Map of the {{ delivery.name }} courier heading to your address"></div>
+  <p class="hint m-0 mt-2" id="track-note">Courier position is simulated. Allow location to see your own street.</p>
+</section>
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="panel">
+      <dl class="detail-list">
+        <dt>Product</dt><dd><a href="{{ url_for('catalog.product', product_id=order.product.id) }}">{{ order.product.title }}</a> × {{ order.quantity }}</dd>
+        <dt>Payment method</dt><dd>{{ 'Cash on delivery' if order.payment_method == 'cod' else 'Card (simulated)' }}</dd>
+        <dt>Delivery</dt><dd><i class="bi bi-{{ delivery.icon }}" aria-hidden="true"></i> {{ delivery.name }}</dd>
+        <dt>Deliver to</dt><dd>{{ order.address.detail }}, {{ order.address.street }}, {{ order.address.ward }}</dd>
+        <dt>Placed</dt><dd class="num">{{ order.ordered_at|dt }}</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel">
+      <div class="sum"><span>Unit price</span><span>{{ order.unit_price|vnd }}</span></div>
+      <div class="sum"><span>Shipping</span><span>{{ order.shipping_fee|vnd }}</span></div>
+      <div class="sum total align-items-center"><span>Total</span><span class="tag tag-lg">{{ order.total_price|vnd }}</span></div>
+      <form method="post" action="{{ url_for('order.cancel', order_id=order.id) }}" id="cancel-form" class="mt-3"
+            {% if order.status not in ('placed', 'processing') %}hidden{% endif %}>
+        <button class="btn btn-outline-danger w-100">Cancel order</button>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/order_progress.js') }}"></script>{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="{{ url_for('static', filename='js/delivery_map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/order_progress.js') }}"></script>
+{% endblock %}

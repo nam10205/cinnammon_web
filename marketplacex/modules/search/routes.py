@@ -10,10 +10,10 @@ from . import images, service
 bp = Blueprint("search", __name__)
 
 
-def _render(products, heading, q=""):
+def _render(products, heading, q="", **extra):
     cust = auth.current_customer()
     return render_template("customer/search.html", products=products, heading=heading, q=q,
-                           history=service.recent(cust))
+                           history=service.recent(cust), **extra)
 
 
 @bp.get("/search")
@@ -46,4 +46,10 @@ def search_image():
         flash(e.message, "danger")
         return redirect(url_for("search.search"))
     service.record(auth.current_customer(), f.filename or "photo", "image")
-    return _render(service.search_vector(vec), "Results for your photo")
+    label = images.describe(data, [c.name for c in catalog.categories()])
+    products = service.search_text(label) if label else []
+    if products:
+        return _render(products, "Results for your photo", search_box=label)
+    note = (f"No products match “{label}”, so these are matched by colour." if label else
+            "The AI couldn't read this photo right now (busy or offline), so these are matched by colour. Try again in a minute.")
+    return _render(service.search_vector(vec), "Results for your photo", search_box=label or "", photo_note=note)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, current_app, flash, redirect, render_template, request, url_for
 
-from ... import auth
+from ... import auth, clock
 from ...errors import DomainError, NotFound
 from ..cart import service as cart
 from . import service
@@ -15,9 +15,11 @@ bp = Blueprint("order", __name__)
 def checkout():
     lines = cart.lines()
     sub = sum(l.line_total for l in lines)
-    fee = service.shipping_fee(sub) if lines else 0
+    fees = {k: service.shipping_fee(sub, k) for k in service.DELIVERIES}
+    fee = fees[service.DEFAULT_DELIVERY] if lines else 0
     return render_template("customer/checkout.html", lines=lines, subtotal=sub, fee=fee,
-                           total=sub + fee, address=auth.current_customer().address)
+                           total=sub + fee, address=auth.current_customer().address,
+                           deliveries=service.DELIVERIES, fees=fees, default=service.DEFAULT_DELIVERY)
 
 
 @bp.post("/checkout")
@@ -30,7 +32,8 @@ def place():
         flash("Some items in your cart are no longer available and were removed", "warning")
     try:
         service.checkout(auth.current_customer(), current, request.form.get("payment_method", ""),
-                         request.form.get("card_number"))
+                         request.form.get("card_number"),
+                         request.form.get("delivery", service.DEFAULT_DELIVERY))
     except DomainError as e:
         flash(e.message, "danger")
         return redirect(url_for("order.checkout"))
@@ -60,7 +63,10 @@ def my_orders():
 def detail(order_id):
     service.advance_due()
     o = _own_order(order_id)
-    return render_template("customer/order_detail.html", order=o, progress=service.progress(o))
+    key = service.delivery_of(o)
+    return render_template("customer/order_detail.html", order=o, progress=service.progress(o),
+                           delivery_key=key, delivery=service.DELIVERIES[key],
+                           step_seconds=service.STEP_SECONDS, now=clock.now())
 
 
 @bp.get("/orders/<int:order_id>/progress")

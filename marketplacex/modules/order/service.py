@@ -15,17 +15,41 @@ DEMO_CARD = "4242424242424242"
 DUPLICATE_WINDOW_SECONDS = 5
 
 
-def shipping_fee(subtotal: int) -> int:
-    return 0 if subtotal >= FREE_SHIPPING_FROM else SHIPPING_FEE
+# Every courier has its own fee, so the stored shippingFee alone says which one carried
+# the order (no extra column). Only Vinfast keeps the free-shipping threshold.
+DELIVERIES = {
+    "vinbot": {"name": "Vinbot", "blurb": "Sidewalk robot, rolls to your door", "fee": 15_000, "icon": "robot"},
+    "vinno": {"name": "Vinno", "blurb": "Electric scooter through the alleys", "fee": 25_000, "icon": "scooter"},
+    "vinfast": {"name": "Vinfast", "blurb": "Electric car, free from 500,000 ₫", "fee": SHIPPING_FEE, "icon": "car-front-fill"},
+    "vindrone": {"name": "Vindrone", "blurb": "Quadcopter, straight over the rooftops", "fee": 65_000, "icon": "fan"},
+    "vinsubmarine": {"name": "Vinsubmarine", "blurb": "Up the river, quietly", "fee": 150_000, "icon": "water"},
+    "vinair": {"name": "Vinair", "blurb": "Private jet, for the impatient", "fee": 290_000, "icon": "airplane-fill"},
+}
+DEFAULT_DELIVERY = "vinfast"
+
+
+def shipping_fee(subtotal: int, delivery: str = DEFAULT_DELIVERY) -> int:
+    if delivery == DEFAULT_DELIVERY and subtotal >= FREE_SHIPPING_FROM:
+        return 0
+    return DELIVERIES[delivery]["fee"]
+
+
+def delivery_of(order) -> str:
+    """The courier for an order, read back from the fee its checkout paid."""
+    fee = (db.session.query(db.func.coalesce(db.func.sum(Order.shipping_fee), 0))
+           .filter(Order.customer_id == order.customer_id, Order.ordered_at == order.ordered_at).scalar())
+    return next((k for k, d in DELIVERIES.items() if d["fee"] == fee), DEFAULT_DELIVERY)
 
 
 def checkout(customer, cart: dict[int, int], payment_method: str,
-             card_number: str | None = None) -> list[Order]:
+             card_number: str | None = None, delivery: str = DEFAULT_DELIVERY) -> list[Order]:
     cart = {int(k): int(v) for k, v in (cart or {}).items() if int(v) > 0}
     if not cart:
         raise ValidationError("Your cart is empty")
     if payment_method not in ("cod", "card"):
         raise ValidationError("Choose a payment method")
+    if delivery not in DELIVERIES:
+        raise ValidationError("Choose a delivery option")
     if payment_method == "card":
         digits = "".join(ch for ch in (card_number or "") if ch.isdigit())
         if digits != DEMO_CARD:
@@ -51,7 +75,7 @@ def checkout(customer, cart: dict[int, int], payment_method: str,
 
     now = clock.now()
     subtotal = sum(qty * products[pid].price for pid, qty in cart.items())
-    fee = shipping_fee(subtotal)
+    fee = shipping_fee(subtotal, delivery)
     orders = []
     for i, (pid, qty) in enumerate(cart.items()):
         p = products[pid]

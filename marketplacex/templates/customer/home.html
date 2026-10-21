@@ -1,15 +1,67 @@
 {% extends "base.html" %}
-{% from "_cards.html" import product_card %}
+{% from "_cards.html" import product_card, empty %}
 {% block content %}
-{% for c, items in sections %}
-<section class="mb-5">
-  <div class="d-flex justify-content-between align-items-baseline mb-3">
-    <h2 class="h4 mb-0">{{ c.name }}</h2>
-    <a href="/categories/{{ c.id }}">See all</a>
+{% if featured %}
+<section class="hero" aria-roledescription="carousel" aria-label="Featured products">
+  <div class="hero-track" id="hero-track">
+    {% for p in featured %}
+    <article class="hero-slide ink-{{ p.category_id % 8 }}" aria-roledescription="slide" aria-label="{{ loop.index }} of {{ featured|length }}">
+      <div class="hero-copy">
+        <h2 class="hero-title">{{ p.title }}</h2>
+        <p class="hero-brand">{% if p.brand %}{{ p.brand }} · {% endif %}<a href="/categories/{{ p.category_id }}">{{ p.category.name }}</a> · <i class="bi bi-star-fill" aria-hidden="true"></i> {{ '%.1f'|format(p.avg_rating or 0) }}</p>
+        <div class="hero-actions">
+          <a class="btn btn-light btn-lg" href="/products/{{ p.id }}">Shop now</a>
+          {% if p.images|length > 1 %}<a class="hero-link" href="/products/{{ p.id }}">See all {{ p.images|length }} photos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
+        </div>
+      </div>
+      <a class="hero-stage" href="/products/{{ p.id }}" tabindex="-1">
+        <img src="{{ p.images[0].url }}" alt="{{ p.title }}" {{ 'loading=lazy' if not loop.first }}>
+        <span class="tag tag-lg hero-tag">{{ p.price|vnd }}</span>
+      </a>
+    </article>
+    {% endfor %}
   </div>
-  <div class="row row-cols-2 row-cols-md-4 g-3">{% for p in items %}{{ product_card(p) }}{% endfor %}</div>
+  {% if featured|length > 1 %}
+  <div class="hero-controls">
+    <button type="button" class="hero-arrow" data-dir="-1" aria-label="Previous slide"><i class="bi bi-chevron-left"></i></button>
+    <div class="hero-dots" role="tablist">
+      {% for p in featured %}<button type="button" role="tab" aria-label="Show {{ p.title }}" aria-selected="{{ 'true' if loop.first else 'false' }}"><span></span></button>{% endfor %}
+    </div>
+    <button type="button" class="hero-arrow" data-dir="1" aria-label="Next slide"><i class="bi bi-chevron-right"></i></button>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if sections %}
+<section class="section">
+  <div class="section-head plain"><h2>Shop by category</h2></div>
+  <div class="cat-grid">
+    {% for c, items in sections %}
+    <a class="cat-tile ink-{{ c.id % 8 }} {{ 'wide' if loop.index0 in (0, 5, 6, 7) }}" href="/categories/{{ c.id }}">
+      <span class="cat-name">{{ c.name }}</span>
+      <span class="cat-count">{{ counts.get(c.id, 0) }} products</span>
+      <span class="cat-go">Shop <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+      {% set shown = items|selectattr('image_url')|list %}
+      <span class="cat-imgs" aria-hidden="true">
+        {% for p in shown[:(2 if loop.index0 in (0, 5, 6, 7) else 1)] %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% endfor %}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% for c, items in sections %}
+<section class="section ink-{{ c.id % 8 }}">
+  <div class="section-head">
+    <h2>{{ c.name }}</h2>
+    <a href="/categories/{{ c.id }}">See all {{ counts.get(c.id, 0) }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+  </div>
+  <div class="row row-cols-2 row-cols-md-4 g-4">{% for p in items[:4] %}{{ product_card(p) }}{% endfor %}</div>
 </section>
 {% else %}
-<p class="text-muted">No products yet.</p>
+{{ empty('bag', 'No products yet.') }}
 {% endfor %}
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/hero.js') }}"></script>{% endblock %}
