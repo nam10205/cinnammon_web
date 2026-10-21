@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Categories · MarketplaceX{% endblock %}
+{% block content %}
+{% with active='categories' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1 class="h3 mb-3">Categories</h1>
+<table class="table align-middle">
+  <thead><tr><th>#</th><th>Name</th><th>Description</th><th class="text-end">Products</th><th></th></tr></thead>
+  <tbody>
+  {% for c, n in rows %}
+    <tr>
+      <td>{{ c.id }}</td>
+      <td colspan="2">
+        <form method="post" action="{{ url_for('admin.edit_category', category_id=c.id) }}" class="d-flex gap-2">
+          <input class="form-control form-control-sm" name="name" value="{{ c.name }}" maxlength="255" required>
+          <input class="form-control form-control-sm" name="description" value="{{ c.description or '' }}" maxlength="255">
+          <button class="btn btn-sm btn-outline-primary">Save</button>
+        </form>
+      </td>
+      <td class="text-end">{{ n }}</td>
+      <td class="text-end">
+        <form method="post" action="{{ url_for('admin.delete_category', category_id=c.id) }}"><button class="btn btn-sm btn-outline-danger">Delete</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h2 class="h5">Add category</h2>
+<form method="post" action="{{ url_for('admin.categories') }}" class="row g-2">
+  <div class="col-md-4"><input class="form-control" name="name" placeholder="Name" maxlength="255" required></div>
+  <div class="col-md-6"><input class="form-control" name="description" placeholder="Description" maxlength="255"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100">Add</button></div>
+</form>
+{% endblock %}

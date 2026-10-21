@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Customers · MarketplaceX{% endblock %}
+{% block content %}
+{% with active='customers' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1 class="h3 mb-3">Customers</h1>
+<table class="table align-middle">
+  <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th class="text-end">Orders</th></tr></thead>
+  <tbody>
+  {% for c, n in rows %}
+    <tr>
+      <td>{{ c.id }}</td>
+      <td><a href="{{ url_for('admin.customer', customer_id=c.id) }}">{{ c.name or c.email }}</a></td>
+      <td>{{ c.email }}</td><td>{{ c.phone_number or '' }}</td><td class="text-end">{{ n }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-muted">No customers.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

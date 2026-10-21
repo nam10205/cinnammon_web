@@ -142,3 +142,26 @@ def seller_products(q: str = "", category_id: int | None = None, page: int = 1,
     items = (query.options(selectinload(Product.images)).order_by(Product.id.desc())
              .offset((max(1, page) - 1) * per_page).limit(per_page).all())
     return items, total
+
+
+def save_category(category: Category | None, name: str, description: str) -> Category:
+    name = (name or "").strip()
+    description = (description or "").strip()
+    if not name or len(name) > 255:
+        raise ValidationError("Category name is required (255 characters max)")
+    if len(description) > 255:
+        raise ValidationError("Description is too long (255 characters max)")
+    if category is None:
+        category = Category()
+        db.session.add(category)
+    category.name, category.description = name, description
+    db.session.commit()
+    return category
+
+
+def delete_category(category_id: int) -> None:
+    category = get_category(category_id)
+    if db.session.query(Product.id).filter(Product.category_id == category.id).first():
+        raise ValidationError("Category still has products")
+    db.session.delete(category)
+    db.session.commit()

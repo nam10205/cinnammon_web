@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Admin · MarketplaceX{% endblock %}
+{% block content %}
+{% with active='dashboard' %}{% include "admin/_nav.html" %}{% endwith %}
+<h1 class="h3 mb-3">Overview</h1>
+<table class="table w-auto">
+  <thead><tr><th>Table</th><th class="text-end">Rows</th></tr></thead>
+  <tbody>{% for name, n in counts %}<tr><td>{{ name }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}
