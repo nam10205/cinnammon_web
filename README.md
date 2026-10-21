@@ -11,28 +11,31 @@ Requires Python 3.9+.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/flask --app marketplacex.app seed      # (re)creates instance/marketplacex.db with demo data
-.venv/bin/flask --app marketplacex.app run       # http://127.0.0.1:5000
-.venv/bin/python -m pytest -q                    # full test suite
+.venv/bin/flask --app marketplacex.app init-db --reset   # drops, recreates and seeds the database
+.venv/bin/flask --app marketplacex.app run                # http://127.0.0.1:5000
+.venv/bin/python -m pytest -q                             # full test suite
 ```
+
+Without `--reset`, `init-db` refuses to touch a database that already has accounts. On Postgres it also enables row level security on every table.
 
 ### Demo accounts (password `demo123`; the login page also has one-click demo buttons)
 
 | Actor | Email | Notes |
 |---|---|---|
-| Customer | alice@demo | Has orders in every state, an open return, and a chat |
-| Seller | sportzone@demo, techhub@demo, stylehouse@demo, gadgetpro@demo, homenest@demo, freshmart@demo, glowbeauty@demo, motoworld@demo | One verified shop each (the *seller* demo button logs in as SportZone) |
-| More customers | binh@demo, chi@demo, dung@demo | Delivered orders with verified-purchase reviews |
+| Customer | alice@demo | Two delivered, reviewed orders and a chat with TechZone; the *customer* demo button logs in as Alice |
+| More customers | binh@demo, chi@demo, dung@demo, giang@demo, hoa@demo, khanh@demo, linh@demo, minh@demo, nam@demo | Addresses in Hanoi and Ho Chi Minh City; two delivered orders with verified-purchase reviews each |
+| Seller | techzone@demo, homenest@demo, stylehub@demo, glowupbeauty@demo, readmorebooks@demo, fitlife@demo | One verified shop each (the *seller* demo button logs in as TechZone) |
 | Administrator | admin@demo | Admin Portal, including Cases console, demo clock and settlement controls |
 
 ### Demo data
 
-- **207 products in 25 categories across 8 shops.**
-  - The report's 12 prototype products keep their prices, ratings and search vectors, so §13.1's results still reproduce.
-  - The other 194 come from a snapshot of [dummyjson.com/products](https://dummyjson.com/products), saved in `marketplacex/data/catalog.json` and loaded by `marketplacex/seed_bulk.py`. Their USD prices are converted at 25,000 ₫ per dollar.
-- **Product photos load online**, from cdn.dummyjson.com and Wikimedia Commons.
-  - Seeding works offline, but photos need internet. Without it, a placeholder image is shown.
-  - Image search uses the prototype's three sample photos, so it only returns the 12 prototype products.
+- **520 products in 8 categories across 6 shops**, from a snapshot of [Tiki.vn](https://tiki.vn) saved in `marketplacex/data/tiki_catalog.json` and loaded by `marketplacex/seed_tiki.py`.
+  - Categories: Phones, Computers & accessories, Home appliances, Fashion, Beauty, Books, Sports, Food & drinks (65 products each).
+  - Prices, ratings, review and sold counts come from Tiki; each Tiki option becomes a variant, with 20 to 200 units of stock.
+  - Vouchers: `SALE10` (10% off, platform-wide) and `TECH80` (80,000 ₫ off TechZone orders over 500,000 ₫).
+- **Product photos load online** from Tiki's CDN (up to three per product). Seeding works offline, but photos need internet.
+- Image search compares colour-histogram vectors stored with each product's first photo.
+- The test suite seeds its own small prototype catalogue (the report's 12 products, `marketplacex/seed.py`), so §13.1's search results are checked there.
 
 ### Shopping assistant (Gemini chatbot)
 
@@ -53,13 +56,13 @@ Without a key, the bubble still shows but says the assistant is unavailable.
 ## 5-minute demo script
 
 1. **Customer:** open the login page and click *customer*.
-   - Search `black running shoes under 2 million` (text), try the *Voice* tab with `wireless mouse under 500k`, and the *Image* tab with the black-sneaker photo. These reproduce the report's prototype results (§13.1).
-   - Add **Biti's Hunter Black Sneakers × 2** to the cart, then *Check out* with vouchers `SALE10, SPORT80`. The quote shows **1,646,000 ₫** (merchandise 1,798,000 − discount 180,000 + shipping 28,000), as in the report.
+   - Search `iphone` (text), try the *Voice* tab with a spoken query, and the *Image* tab with a product photo.
+   - Add a phone to the cart, then *Check out* with vouchers `SALE10, TECH80`. The quote shows both discounts and the shipping fee.
    - *Place order*, then on the simulated provider page click *Approve (send duplicate callback)*. The duplicate is processed only once.
-2. **Seller** (*seller* button = SportZone): Seller Center → the order → *Accept* → *Packed — create label* → *Hand over to carrier* → *Advance tracking* until delivered.
+2. **Seller** (*seller* button = TechZone): Seller Center → the order → *Accept* → *Packed — create label* → *Hand over to carrier* → *Advance tracking* until delivered.
 3. **Customer:** open the order and *Review* the item, then *Request return / refund* (refund only).
 4. **Seller:** Returns → the case → *Accept*. The refund is issued, the order becomes *Refunded*, and Settlement shows the held entries and the refund reversal.
-5. **Admin:** Operations dashboard (§4.5 metrics), *Govern users & content* (approve or reject the pending "Replica Running Shoes" listing), *Platform policy* (fast-forward the clock 8 days, then *Run settlement release*), *Audit log*.
+5. **Admin:** Operations dashboard (§4.5 metrics), *Govern users & content* (approve or reject pending listings), *Platform policy* (fast-forward the clock 8 days, then *Run settlement release*), *Audit log*.
 6. **Admin, Cases:** the dispute queue. To create one, have a seller reject a return and the customer escalate it, then record a reason-coded decision. Search for `alice` to see her cases and orders.
 
 ## Architecture (Figure 2 → code)

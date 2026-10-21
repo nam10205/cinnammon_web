@@ -12,6 +12,7 @@ class StockLedger(db.Model):
     reserved = db.Column(db.Integer, nullable=False, default=0)
     committed = db.Column(db.Integer, nullable=False, default=0)
     version = db.Column(db.Integer, nullable=False, default=1)
+    offer = db.relationship("Offer")
     __table_args__ = (
         db.CheckConstraint("available >= 0", name="ck_available_nonneg"),
         db.CheckConstraint("reserved >= 0", name="ck_reserved_nonneg"),

@@ -34,7 +34,7 @@ def login():
 def demo_login(role):
     u = Account.query.filter_by(role=role, status="active").order_by(Account.id).first()
     if u is None:
-        raise NotFound(f"No demo {role} account. Run `flask --app marketplacex.app seed`.")
+        raise NotFound(f"No demo {role} account. Run `flask --app marketplacex.app init-db`.")
     login_user(u)
     flash(f"Logged in as {u.name} ({role})", "success")
     return redirect(_home_for(u))

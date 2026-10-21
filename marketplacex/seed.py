@@ -1,4 +1,7 @@
-"""Demo seed data. Uses services so invariants hold."""
+"""Prototype seed data for the test suite (the report's 12 products). Uses services so invariants hold.
+
+The production database is seeded from the Tiki.vn snapshot by `seed_tiki` (`flask init-db`).
+"""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -7,7 +10,6 @@ from .extensions import db
 from .modules.admin import policy
 from .modules.admin.policy import ensure_defaults
 from .modules.search.images import feature_vector, pack, solid_image
-from .seed_bulk import prototype_photo, seed_bulk_catalog, seed_extra_customers  # noqa: F401
 
 DEMO_PASSWORD = "demo123"
 
@@ -51,6 +53,28 @@ PRODUCTS = {
 }
 COLOR_RGB = {"black": (20, 20, 20), "white": (240, 240, 240), "beige": (225, 200, 160)}
 SEED_KEYS = {k: v[0] for k, v in PRODUCTS.items()}
+
+_DJ = "https://cdn.dummyjson.com/product-images"
+_WIKI = "https://upload.wikimedia.org/wikipedia/commons/thumb"
+# Online photos for the 12 prototype products (closest match; titles and search data unchanged).
+PROTOTYPE_PHOTOS = {
+    "P01": f"{_DJ}/mens-shoes/nike-air-jordan-1-red-and-black/thumbnail.webp",
+    "P02": f"{_DJ}/mens-shoes/sports-sneakers-off-white-red/thumbnail.webp",
+    "P03": f"{_DJ}/mens-shoes/puma-future-rider-trainers/thumbnail.webp",
+    "P04": f"{_WIKI}/a/a5/Black_Converse_sneakers.JPG/500px-Black_Converse_sneakers.JPG",
+    "P05": f"{_DJ}/mobile-accessories/apple-airpods-max-silver/thumbnail.webp",
+    "P06": f"{_DJ}/mobile-accessories/apple-iphone-charger/thumbnail.webp",
+    "P07": f"{_WIKI}/2/22/3-Tasten-Maus_Microsoft.jpg/500px-3-Tasten-Maus_Microsoft.jpg",
+    "P08": f"{_WIKI}/4/42/HandKnittedWhiteLaceSock.jpg/500px-HandKnittedWhiteLaceSock.jpg",
+    "P09": f"{_DJ}/tops/girl-summer-dress/thumbnail.webp",
+    "P10": f"{_WIKI}/9/97/Keyboard_Construction.JPG/500px-Keyboard_Construction.JPG",
+    "P11": f"{_DJ}/mens-shirts/gigabyte-aorus-men-tshirt/thumbnail.webp",
+    "P12": f"{_DJ}/skin-care/vaseline-men-body-and-face-lotion/thumbnail.webp",
+}
+
+
+def prototype_photo(key: str) -> str:
+    return PROTOTYPE_PHOTOS[key]
 
 
 def seed_catalog() -> None:
@@ -99,7 +123,8 @@ def seed_catalog() -> None:
             created_at=policy.now() - timedelta(days=age))
 
 
-def seed_promotions() -> None:
+def seed_promotions(shop_name: str = "SportZone", shop_code: str = "SPORT80") -> None:
+    """The 10.10 campaign: platform voucher SALE10 and an 80,000 ₫ voucher for one shop."""
     from .modules.promotion.models import Campaign, Voucher
     from .modules.seller.models import Shop
     now = policy.now()
@@ -107,11 +132,11 @@ def seed_promotions() -> None:
                  ends_at=now + timedelta(days=30), active=True)
     db.session.add(c)
     db.session.flush()
-    sz = Shop.query.filter_by(name="SportZone").one()
+    sz = Shop.query.filter_by(name=shop_name).one()
     db.session.add_all([
         Voucher(campaign_id=c.id, code="SALE10", kind="percent", value=10, max_discount_vnd=100_000,
                 min_spend_vnd=0, usage_limit=1000),
-        Voucher(campaign_id=c.id, code="SPORT80", kind="fixed", value=80_000, min_spend_vnd=500_000,
+        Voucher(campaign_id=c.id, code=shop_code, kind="fixed", value=80_000, min_spend_vnd=500_000,
                 shop_id=sz.id, usage_limit=500),
     ])
     db.session.commit()
@@ -123,15 +148,19 @@ def _buy(customer, key: str, qty: int = 1, codes=None):
 
 
 def _buy_title(customer, title: str, qty: int = 1, codes=None):
+    from .modules.catalog.models import Product
+    p = Product.query.filter_by(title=title).first()
+    return _buy_offer(customer, p.variants[0].offer.id, qty, codes)
+
+
+def _buy_offer(customer, offer_id: int, qty: int = 1, codes=None):
     import uuid
 
     from .modules.cart import service as cart
-    from .modules.catalog.models import Product
     from .modules.checkout import service as checkout
     from .modules.order import service as order_service
     from .modules.payment import service as payment
-    p = Product.query.filter_by(title=title).first()
-    cart.add_item(customer, p.variants[0].offer.id, qty)
+    cart.add_item(customer, offer_id, qty)
     g = checkout.quote(customer, customer.addresses[0].id, codes or [])
     checkout.place_order(customer, g.id, uuid.uuid4().hex, g.quote_hash)
     pa = payment.latest_for_group(g.id)
@@ -182,30 +211,31 @@ def seed_listings() -> None:
                            image_urls=["/static/sample_images/placeholder.svg"], status="pending")
 
 
-def seed_chat() -> None:
+CHAT_SPORTZONE = ("Hi! Do the Nike Air Zoom run true to size?",
+                  "Hello Alice, yes they do. Size 42 fits most customers who wear 42 normally.")
+
+
+def seed_chat(shop_name: str = "SportZone", messages: tuple[str, str] = CHAT_SPORTZONE) -> None:
+    """One conversation between alice@demo and a shop: her question, then the shop's answer."""
     from .modules.chat import service as chat
     from .modules.identity.models import Account
     from .modules.seller.models import Shop
     alice = Account.query.filter_by(email="alice@demo").one()
-    shop = Shop.query.filter_by(name="SportZone").one()
+    shop = Shop.query.filter_by(name=shop_name).one()
     c = chat.get_or_create(alice, shop.id)
-    chat.send(alice, c.id, "Hi! Do the Nike Air Zoom run true to size?")
-    chat.send(shop.owner, c.id, "Hello Alice, yes they do. Size 42 fits most customers who wear 42 normally.")
+    chat.send(alice, c.id, messages[0])
+    chat.send(shop.owner, c.id, messages[1])
 
 
 def seed_all_for_tests() -> None:
     """Catalogue + promotions, without demo orders (tests build their own)."""
     seed_catalog()
-    for fn in ("seed_promotions", "seed_listings"):
-        f = globals().get(fn)
-        if f:
-            f()
+    seed_promotions()
+    seed_listings()
 
 
-def run() -> None:
-    seed_catalog()
-    for fn in ("seed_promotions", "seed_bulk_catalog", "seed_listings", "seed_demo_orders", "seed_extra_customers",
-               "seed_chat"):
-        f = globals().get(fn)
-        if f:
-            f()
+def seed_prototype_demo() -> None:
+    """The prototype catalogue with alice's demo orders and chat (used by the end-to-end tests)."""
+    seed_all_for_tests()
+    seed_demo_orders()
+    seed_chat()

@@ -33,16 +33,17 @@ def sync_product(product: Product) -> None:
     product.stock_quantity = sum(inventory.in_stock(o.id) for o in offers)
     ratings = [r for (r,) in db.session.query(Review.rating)
                .filter(Review.product_id == product.id, Review.status == "visible").all()]
-    if ratings:
-        product.avg_rating = round(sum(ratings) / len(ratings), 1)
-    else:
-        count = sum(o.rating_count for o in offers)
-        if count:
-            product.avg_rating = round(sum(o.rating_avg * o.rating_count for o in offers) / count, 1)
-        else:
-            rated = [o.rating_avg for o in offers if o.rating_avg]
-            product.avg_rating = round(sum(rated) / len(rated), 1) if rated else 0
+    product.avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else _offer_rating(offers)
     product.updated_at = policy.now()
+
+
+def _offer_rating(offers) -> float:
+    """avgRating without visible reviews: count-weighted offer ratings, else the mean of rated offers."""
+    count = sum(o.rating_count for o in offers)
+    if count:
+        return round(sum(o.rating_avg * o.rating_count for o in offers) / count, 1)
+    rated = [o.rating_avg for o in offers if o.rating_avg]
+    return round(sum(rated) / len(rated), 1) if rated else 0
 
 
 def sync_offers(offer_ids) -> None:
@@ -59,8 +60,13 @@ def sync_offers(offer_ids) -> None:
 def create_product(shop, category, title: str, brand: str, description: str, attributes: dict,
                    variants: list[dict], image_urls: list[str] | None = None,
                    vectors: list[bytes | None] | None = None,
-                   status: str = "draft", created_at=None) -> Product:
-    from ..inventory import service as inventory
+                   status: str = "draft", created_at=None, commit: bool = True) -> Product:
+    """Create a product with its images, variants, offers and stock ledgers.
+
+    The rows are linked through relationships and never flushed here, so `commit=False` lets a bulk
+    seed insert many products in one flush (one round trip per table on Postgres).
+    """
+    from ..inventory.models import StockLedger
     created = created_at or policy.now()
     p = Product(shop_id=shop.id, category_id=category.id, title=title, brand=brand,
                 description=_fit_description(description), attributes=attributes or {}, status=status,
@@ -69,21 +75,25 @@ def create_product(shop, category, title: str, brand: str, description: str, att
     vectors = vectors or []
     for i, url in enumerate(image_urls or []):
         p.images.append(ProductImage(url=url, sort_order=i, feature_vector=vectors[i] if i < len(vectors) else None))
-    db.session.flush()
+    offers, stock = [], 0
     for v in variants:
-        var = Variant(product_id=p.id, name=v["name"], sku=v.get("sku"))
-        db.session.add(var)
-        db.session.flush()
-        o = Offer(shop_id=shop.id, variant_id=var.id, price_vnd=int(v["price_vnd"]),
+        var = Variant(name=v["name"], sku=v.get("sku"))
+        p.variants.append(var)
+        o = Offer(shop_id=shop.id, price_vnd=int(v["price_vnd"]),
                   original_price_vnd=v.get("original_price_vnd"), purchase_limit=int(v.get("purchase_limit", 10)),
                   sold_count=int(v.get("sold_count", 0)), rating_avg=float(v.get("rating_avg", 0.0)),
-                  base_rating_avg=float(v.get("rating_avg", 0.0)))
-        db.session.add(o)
-        db.session.flush()
-        inventory.init_ledger(o.id, int(v.get("stock", 0)))
-    sync_product(p)
-    p.updated_at = created
-    db.session.commit()
+                  rating_count=int(v.get("rating_count", 0)), base_rating_avg=float(v.get("rating_avg", 0.0)))
+        var.offer = o
+        available = max(0, int(v.get("stock", 0)))
+        db.session.add(StockLedger(offer=o, available=available))
+        offers.append(o)
+        stock += available
+    # The derived ERD fields sync_product would compute (a new product has no reviews yet).
+    p.price = min((o.price_vnd for o in offers), default=0)
+    p.stock_quantity = stock
+    p.avg_rating = _offer_rating(offers)
+    if commit:
+        db.session.commit()
     return p
 
 

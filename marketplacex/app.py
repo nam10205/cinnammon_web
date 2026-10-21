@@ -5,7 +5,9 @@ import importlib
 import os
 import uuid
 
+import click
 from flask import Flask, flash, g, jsonify, redirect, render_template, request
+from sqlalchemy import inspect, text
 
 from .config import Config
 from .errors import DomainError
@@ -104,13 +106,39 @@ def _register_errors(app: Flask) -> None:
         return render_template("error.html", status=404, message="Page not found"), 404
 
 
-def _register_cli(app: Flask) -> None:
-    @app.cli.command("seed")
-    def seed_cmd():
-        """Drop, recreate and seed the demo database."""
-        from . import seed
-        db.drop_all()
-        db.create_all()
-        seed.run()
-        print("Seeded demo data.")
+def enable_rls() -> int:
+    """Enable Postgres row level security on every table (Supabase exposes tables through its API).
 
+    The app connects as the table owner, which RLS does not restrict. Returns the number of tables; 0 elsewhere.
+    """
+    if db.engine.dialect.name != "postgresql":
+        return 0
+    quote = db.engine.dialect.identifier_preparer.quote
+    tables = db.metadata.sorted_tables
+    with db.engine.begin() as conn:
+        for t in tables:
+            conn.execute(text(f"ALTER TABLE {quote(t.name)} ENABLE ROW LEVEL SECURITY"))
+    return len(tables)
+
+
+def _register_cli(app: Flask) -> None:
+    @app.cli.command("init-db")
+    @click.option("--reset", is_flag=True, help="Drop every table first, then recreate and reseed.")
+    def init_db_cmd(reset: bool):
+        """Create the schema and seed the Tiki.vn catalogue with demo accounts."""
+        from . import seed_tiki
+        from .modules.admin import policy
+        from .modules.identity.models import Account
+        if reset:
+            db.drop_all()
+        elif inspect(db.engine).has_table(Account.__tablename__) and db.session.query(Account.id).first():
+            click.echo("Database already initialised; use --reset to wipe and reseed.")
+            raise SystemExit(1)
+        db.create_all()
+        policy.ensure_defaults()
+        counts = seed_tiki.run()
+        rls = enable_rls()
+        for k, v in counts.items():
+            click.echo(f"{k}: {v}")
+        if rls:
+            click.echo(f"row level security enabled on {rls} tables")

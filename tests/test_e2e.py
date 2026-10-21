@@ -59,7 +59,7 @@ def test_full_customer_journey(client, seeded):
 
 def test_seed_runs_clean(app):
     from marketplacex import seed
-    seed.run()
+    seed.seed_prototype_demo()
     assert Order.query.count() >= 5
     for o in Order.query.filter(Order.status.in_(["Delivered", "Completed"])).all():
         assert settlement.is_balanced(o.id)
@@ -69,7 +69,7 @@ def test_seed_runs_clean(app):
 
 def test_all_main_pages_render_after_seed(client, app):
     from marketplacex import seed
-    seed.run()
+    seed.seed_prototype_demo()
     for role, pages in {"customer": ["/", "/search?q=shoes", "/cart", "/orders", "/saved", "/notifications", "/checkout"],
                         "seller": ["/seller/", "/seller/orders", "/seller/returns", "/seller/settlement"]}.items():
         client.get("/logout")
