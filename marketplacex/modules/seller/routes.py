@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from sqlalchemy.orm import selectinload
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from ... import auth
 from ...extensions import db
 from ..catalog import service as catalog
 from ..catalog.models import ProductImage
+from ..identity.models import Customer
 from ..order import service as orders
 from ..order.models import Order
 
@@ -73,12 +75,15 @@ def delete_image(image_id):
 @auth.require_role("seller")
 def order_list():
     orders.advance_due()
-    rows = db.session.query(Order).order_by(Order.ordered_at.desc(), Order.id.desc()).all()
+    rows = (db.session.query(Order)
+            .options(selectinload(Order.product), selectinload(Order.customer).selectinload(Customer.full_name))
+            .order_by(Order.ordered_at.desc(), Order.id.desc()).all())
     return render_template("seller/orders.html", orders=rows)
 
 
 @bp.post("/orders/<int:order_id>/skip")
 @auth.require_role("seller")
 def skip(order_id):
+    orders.advance_due()
     orders.skip_step(orders.get_order(order_id))
     return redirect(url_for("seller.orders"))

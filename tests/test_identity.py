@@ -56,3 +56,9 @@ def test_profile_requires_customer(client, demo, login_as):
     assert client.get("/profile").status_code == 302
     login_as(client, "seller")
     assert client.get("/profile").status_code == 403
+
+def test_login_error_keeps_safe_next(client, demo):
+    r = client.post("/login/email", data={"email": "nobody@x", "next": "/orders"})
+    assert r.headers["Location"].endswith("/login?next=/orders")
+    r = client.post("/login/email", data={"email": "nobody@x", "next": "//evil.com"})
+    assert "evil" not in r.headers["Location"]

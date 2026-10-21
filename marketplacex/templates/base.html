@@ -23,8 +23,10 @@
       </form>
       {% endif %}
       <ul class="navbar-nav ms-auto align-items-lg-center">
-        {% if role == 'customer' %}
+        {% if role in (none, 'customer') %}
           {% if has_endpoint('cart.view') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('cart.view') }}"><i class="bi bi-cart3"></i> Cart{% if cart_count %} <span class="badge rounded-pill bg-warning text-dark">{{ cart_count }}</span>{% endif %}</a></li>{% endif %}
+        {% endif %}
+        {% if role == 'customer' %}
           {% if has_endpoint('order.my_orders') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('order.my_orders') }}">My orders</a></li>{% endif %}
           {% if has_endpoint('identity.profile') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('identity.profile') }}">Profile</a></li>{% endif %}
         {% elif role == 'seller' %}

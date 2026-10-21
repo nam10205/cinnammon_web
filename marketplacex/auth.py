@@ -21,7 +21,10 @@ def current_customer():
 
 
 def login_customer(customer) -> None:
+    cart = session.get("cart")
     session.clear()
+    if cart:
+        session["cart"] = cart
     session["role"] = "customer"
     session["customer_id"] = customer.id
     g.current_customer = customer

@@ -54,3 +54,44 @@ def test_cart_and_checkout_pages_render(client, demo, login_as):
     client.post("/cart/add", data={"product_id": demo.book.id, "qty": 2})
     assert "Sách Đắc Nhân Tâm" in client.get("/cart").get_data(as_text=True)
     assert "4242" in client.get("/checkout").get_data(as_text=True)
+
+def test_visitor_cart_survives_quick_login(client, demo):
+    client.post("/cart/add", data={"product_id": demo.book.id, "qty": 1})
+    assert "/cart" in client.get("/").get_data(as_text=True)
+    client.post("/login/quick/customer")
+    with client.session_transaction() as s:
+        assert s["cart"] == {str(demo.book.id): 1}
+    assert "Sách Đắc Nhân Tâm" in client.get("/checkout").get_data(as_text=True)
+
+def test_sold_out_line_is_pruned_and_does_not_block_checkout(client, demo, login_as):
+    from marketplacex.extensions import db
+    login_as(client, "customer", demo.alice)
+    client.post("/cart/add", data={"product_id": demo.galaxy.id, "qty": 1})
+    client.post("/cart/add", data={"product_id": demo.book.id, "qty": 1})
+    demo.galaxy.stock_quantity = 0
+    db.session.commit()
+    client.get("/cart")
+    with client.session_transaction() as s:
+        assert str(demo.galaxy.id) not in s["cart"]
+    client.post("/checkout", data={"payment_method": "cod"})
+    assert Order.query.count() == 1
+
+def test_checkout_post_prunes_and_flashes(client, demo, login_as):
+    from marketplacex.extensions import db
+    login_as(client, "customer", demo.alice)
+    client.post("/cart/add", data={"product_id": demo.galaxy.id, "qty": 1})
+    client.post("/cart/add", data={"product_id": demo.book.id, "qty": 1})
+    demo.galaxy.stock_quantity = 0
+    db.session.commit()
+    r = client.post("/checkout", data={"payment_method": "cod"}, follow_redirects=True)
+    assert "no longer available and were removed" in r.get_data(as_text=True)
+    assert [o.product_id for o in Order.query.all()] == [demo.book.id]
+
+def test_duplicate_checkout_within_window_is_refused(demo, clock):
+    service.checkout(demo.alice, {demo.book.id: 1}, "cod")
+    with pytest.raises(ValidationError, match="just placed"):
+        service.checkout(demo.alice, {demo.book.id: 1}, "cod")
+    assert Order.query.count() == 1
+    clock.advance(6)
+    service.checkout(demo.alice, {demo.book.id: 1}, "cod")
+    assert Order.query.count() == 2

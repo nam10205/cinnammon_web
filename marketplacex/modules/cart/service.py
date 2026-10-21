@@ -40,14 +40,20 @@ def _save(cart: dict[int, int]) -> None:
 
 
 def lines() -> list[CartLine]:
+    """Cart lines; drops missing/sold-out items and caps qty at stock, saving that back."""
+    before = raw()
+    kept: dict[int, int] = {}
     out = []
-    for pid, qty in raw().items():
+    for pid, qty in before.items():
         p = db.session.get(Product, pid)
         if p is None:
             continue
         qty = min(qty, p.stock_quantity)
         if qty > 0:
+            kept[pid] = qty
             out.append(CartLine(p, qty))
+    if kept != before:
+        _save(kept)
     return out
 
 

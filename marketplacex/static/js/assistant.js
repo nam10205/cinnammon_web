@@ -28,7 +28,7 @@
   }
   function render() {
     log.innerHTML = '';
-    bubble('model', 'Hi! I can help you find products, explain vouchers, shipping and returns, or check your orders.');
+    bubble('model', 'Hi! I can help you find products and check your orders.');
     history.forEach(function (h) { bubble(h.role, h.text); });
   }
   function setOpen(open) {

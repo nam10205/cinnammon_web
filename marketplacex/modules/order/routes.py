@@ -23,8 +23,13 @@ def checkout():
 @bp.post("/checkout")
 @auth.require_role("customer")
 def place():
+    before = cart.raw()
+    cart.lines()
+    current = cart.raw()
+    if current != before:
+        flash("Some items in your cart are no longer available and were removed", "warning")
     try:
-        service.checkout(auth.current_customer(), cart.raw(), request.form.get("payment_method", ""),
+        service.checkout(auth.current_customer(), current, request.form.get("payment_method", ""),
                          request.form.get("card_number"))
     except DomainError as e:
         flash(e.message, "danger")

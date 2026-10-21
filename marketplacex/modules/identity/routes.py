@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from ... import auth
 from ...errors import NotFound, ValidationError
@@ -15,6 +15,11 @@ STAFF_HOME = {"seller": "/seller/products", "admin": "/admin"}
 def _safe_next() -> str | None:
     n = request.values.get("next", "")
     return n if n.startswith("/") and not n.startswith("//") and "\\" not in n else None
+
+
+def _back_to_login():
+    n = _safe_next()
+    return redirect(url_for("identity.login", next=n) if n else "/login")
 
 
 def _after_login(role: str):
@@ -32,7 +37,7 @@ def login_quick(who):
         c = service.find_by_email(service.QUICK_CUSTOMER_EMAIL)
         if c is None:
             flash("Demo customer not found — run init-db", "danger")
-            return redirect("/login")
+            return _back_to_login()
         auth.login_customer(c)
     elif who in ("seller", "admin"):
         auth.login_staff(who)
@@ -46,7 +51,7 @@ def login_email():
     c = service.find_by_email(request.form.get("email", ""))
     if c is None:
         flash("No customer with that email", "danger")
-        return redirect("/login")
+        return _back_to_login()
     auth.login_customer(c)
     return _after_login("customer")
 

@@ -12,6 +12,7 @@ SHIPPING_FEE = 30_000
 FREE_SHIPPING_FROM = 500_000
 STEP_SECONDS = 20
 DEMO_CARD = "4242424242424242"
+DUPLICATE_WINDOW_SECONDS = 5
 
 
 def shipping_fee(subtotal: int) -> int:
@@ -29,6 +30,14 @@ def checkout(customer, cart: dict[int, int], payment_method: str,
         digits = "".join(ch for ch in (card_number or "") if ch.isdigit())
         if digits != DEMO_CARD:
             raise ValidationError("Card declined — use the demo card 4242 4242 4242 4242")
+
+    recent_from = clock.now() - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    recent: dict = {}
+    for o in db.session.query(Order).filter(Order.customer_id == customer.id,
+                                            Order.ordered_at >= recent_from).all():
+        recent.setdefault(o.ordered_at, set()).add((o.product_id, o.quantity))
+    if set(cart.items()) in recent.values():
+        raise ValidationError("This order was just placed — check My orders")
 
     products = {p.id: p for p in db.session.query(Product).filter(Product.id.in_(list(cart)))
                 .with_for_update().all()}
