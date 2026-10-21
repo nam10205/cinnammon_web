@@ -179,7 +179,6 @@ def execute_refund(case: ReturnCase, amount_vnd: int | None = None, actor=None):
         raise RefundExceedsCaptured(f"Refund {amount:,} ₫ exceeds what remains on order #{case.order_id} ({order_left:,} ₫)")
     r = payment.refund(p.id, amount, f"return-{case.id}", case.id, order_id=case.order_id)
     case.refund_amount_vnd = amount
-    case.pending_amount_vnd = None
     _set_status(case, "refunded", actor, f"Refunded {amount:,} ₫ (ref {r.provider_ref})")
     _settle_order(case.order, actor)
     db.session.commit()

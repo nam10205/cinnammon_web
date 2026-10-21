@@ -20,20 +20,25 @@ def cosine(a, b) -> float:
     return dot / (na * nb) if na and nb else 0.0
 
 
-def _fraction(terms: list[str], tokens: set) -> float:
+def _fraction(terms: list[str], tokens: set, alts: dict | None = None) -> float:
     if not terms:
         return 0.0
-    return sum(1 for t in terms if stem(t) in tokens) / len(terms)
+    alts = alts or {}
+
+    def hit(t: str) -> bool:
+        return stem(t) in tokens or any(all(stem(w) in tokens for w in alt) for alt in alts.get(t, []))
+
+    return sum(1 for t in terms if hit(t)) / len(terms)
 
 
 def lexical(q: Query, product) -> float:
     text = " ".join([product.title, product.brand or "", product.category.name,
                      " ".join(str(v) for v in (product.attributes or {}).values())])
-    return _fraction(q.terms, set(tokenize(text)))
+    return _fraction(q.terms, set(tokenize(text)), q.alts)
 
 
 def features(q: Query, product, offer, shop, customer_city: str | None) -> dict:
-    semantic = cosine(q.vector, product.image_vector) if q.vector else _fraction(q.terms, set(tokenize(product.description or "")))
+    semantic = cosine(q.vector, product.image_vector) if q.vector else _fraction(q.terms, set(tokenize(product.description or "")), q.alts)
     return {
         "lexical": lexical(q, product) if not q.vector else 0.0,
         "semantic": semantic,

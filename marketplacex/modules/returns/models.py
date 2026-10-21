@@ -13,7 +13,6 @@ class ReturnCase(db.Model):
     seller_response = db.Column(db.String(500))
     seller_deadline = db.Column(db.DateTime)
     proposed_amount_vnd = db.Column(db.Integer)
-    pending_amount_vnd = db.Column(db.Integer)
     inspection_result = db.Column(db.String(300))
     refund_amount_vnd = db.Column(db.Integer)
     created_at = db.Column(db.DateTime)

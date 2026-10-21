@@ -120,3 +120,6 @@ def test_high_value_checkout_is_never_held(alice):
     g = checkout.quote(alice, alice.addresses[0].id, [])
     checkout.place_order(alice, g.id, uuid.uuid4().hex, g.quote_hash)
     assert g.status in ("placing", "completed")
+    from marketplacex.modules.payment.models import PaymentAttempt
+    assert PaymentAttempt.query.filter_by(group_id=g.id).count() == 1
+    assert g.failure_reason is None

@@ -23,6 +23,7 @@ class Query:
     filters: dict = field(default_factory=dict)
     sort: str = "relevance"
     degraded: bool = False
+    alts: dict = field(default_factory=dict)  # term -> Vietnamese tokens that also satisfy it
 
     def as_dict(self) -> dict:
         return {"type": self.type, "raw": self.raw, "terms": self.terms, "max_price": self.max_price,
@@ -61,15 +62,30 @@ def _parse_price(text: str) -> tuple[str, int | None]:
     return text[:m.start()] + " " + text[m.end():], int(n)
 
 
-def _terms(text: str) -> list[str]:
-    for k in sorted(SYNONYMS, key=lambda k: -len(k)):
-        text = re.sub(rf"\b{k}\b", f" {SYNONYMS[k]} ", text)
-    out = []
-    for t in re.findall(r"[a-z0-9]+", text):
-        if t in STOPWORDS or t in out:
+def _terms(text: str) -> tuple[list[str], dict]:
+    """Return (terms, alts). A synonym is an alternative: the English term also matches via its Vietnamese words."""
+    toks = re.findall(r"[a-z0-9]+", text)
+    out: list[str] = []
+    alts: dict = {}
+    keys = sorted(SYNONYMS, key=lambda k: -len(k.split()))
+    i = 0
+    while i < len(toks):
+        for k in keys:
+            n = len(k.split())
+            if toks[i:i + n] == k.split():
+                term, orig, i = SYNONYMS[k], toks[i:i + n], i + n
+                break
+        else:
+            term, orig, i = toks[i], None, i + 1
+        if not term or term in STOPWORDS:
             continue
-        out.append(t)
-    return out
+        if orig:
+            alts.setdefault(term, [])
+            if orig != [term] and orig not in alts[term]:
+                alts[term].append(orig)
+        if term not in out:
+            out.append(term)
+    return out, alts
 
 
 def build_query(mode: str, text: str = "", image_vector: list[float] | None = None, filters: dict | None = None,
@@ -85,7 +101,7 @@ def build_query(mode: str, text: str = "", image_vector: list[float] | None = No
             q.vector = list(image_vector)
     norm = normalize(text)
     norm, q.max_price = _parse_price(norm)
-    q.terms = _terms(norm)
+    q.terms, q.alts = _terms(norm)
     if q.filters.get("max_price") is not None:
         q.max_price = int(q.filters.pop("max_price"))
     if q.filters.get("min_price") is not None:

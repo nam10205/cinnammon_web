@@ -24,7 +24,7 @@ Requires Python 3.9+.
 
    - Without `DATABASE_URL`, the app uses a local SQLite file, `instance/marketplacex.db`.
 
-3. Create the schema and seed the Tiki catalogue and demo accounts. This takes a few minutes on Supabase.
+3. Create the schema and seed the Tiki catalogue and demo accounts. This takes about 10 minutes on Supabase. Schema changes currently require `init-db --reset`, which wipes all data.
 
    ```bash
    .venv/bin/flask --app marketplacex.app init-db --reset   # drops, recreates and seeds the database

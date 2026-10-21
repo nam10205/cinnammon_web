@@ -186,3 +186,25 @@ def test_search_and_listing_queries_do_not_grow_per_offer(seeded, client):
     db.session.expunge_all()
     n = _count_queries(lambda: client.get("/"))
     assert n <= 60, n
+
+
+@pytest.fixture
+def vn_products(seeded):
+    from helpers import cat
+    from marketplacex.extensions import db
+    from marketplacex.modules.catalog import service as catalog
+    from marketplacex.modules.seller.models import Shop
+    shop = Shop.query.filter_by(name="SportZone").one()
+    ids = {}
+    for key, title in (("shirt", "Áo thun nam cotton"), ("mouse", "Chuột không dây Logitech")):
+        p = catalog.create_product(shop, cat("Shoes"), title, "B", "d", {}, [{"name": "Default", "price_vnd": 1000, "stock": 5}])
+        p.status = "active"
+        ids[key] = p.id
+    db.session.commit()
+    return ids
+
+
+@pytest.mark.parametrize("text,key", [("áo thun", "shirt"), ("ao", "shirt"), ("chuột không dây", "mouse")])
+def test_vietnamese_query_matches_vietnamese_title(vn_products, text, key):
+    r = search_service.search(build_query("text", text=text))
+    assert vn_products[key] in [i.product.id for i in r.items]

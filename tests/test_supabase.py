@@ -18,9 +18,23 @@ ERD = {
 }
 
 
+# Columns added beyond the ERD (spec "Added columns").
+ADDED = {
+    "Address": {"customerID", "recipient", "phone", "district", "city", "isDefault"},
+    "FullName": set(),
+    "Customer": {"accountID"},
+    "SearchHistory": set(),
+    "Category": {"parentID", "attributeSchema"},
+    "Product": {"shopID", "status", "attributes", "moderationReason"},
+    "ProductImage": {"sortOrder"},
+}
+
+
 @pytest.fixture(scope="module")
 def engine():
     from marketplacex.config import Config
+    if not str(Config.SQLALCHEMY_DATABASE_URI).startswith("postgresql"):
+        pytest.skip("not a Postgres database")
     eng = create_engine(Config.SQLALCHEMY_DATABASE_URI)
     yield eng
     eng.dispose()
@@ -29,7 +43,7 @@ def engine():
 def test_erd_tables_and_columns(engine):
     insp = inspect(engine)
     for table, cols in ERD.items():
-        assert cols <= {c["name"] for c in insp.get_columns(table)}, table
+        assert {c["name"] for c in insp.get_columns(table)} == cols | ADDED[table], table
 
 
 def test_fifty_products_per_category(engine):
