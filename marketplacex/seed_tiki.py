@@ -155,9 +155,9 @@ def run(snapshot: dict | None = None) -> dict:
     # remote database. The seed is the only writer and issues no bulk SQL updates, so in-memory state stays
     # current without the reloads.
     expire_on_commit, session.expire_on_commit = session.expire_on_commit, False
-    policy.now()
-    clock = db.session.get(Clock, 1)  # noqa: F841  held so the identity map (weak references) keeps it cached
     try:
+        policy.now()
+        clock = db.session.get(Clock, 1)  # noqa: F841  held so the identity map (weak references) keeps it cached
         shops, customers = _accounts(_shops(snapshot))
         categories, products = _catalogue(snapshot, shops)
         first_shop = tiki.CATEGORIES[0][2]

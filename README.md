@@ -8,15 +8,45 @@ It is a **modular monolith**, which the report's §15 allows as the first stage:
 
 Requires Python 3.9+.
 
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/flask --app marketplacex.app init-db --reset   # drops, recreates and seeds the database
-.venv/bin/flask --app marketplacex.app run                # http://127.0.0.1:5000
-.venv/bin/python -m pytest -q                             # full test suite
-```
+1. Install the requirements (Flask, Flask-SQLAlchemy, Pillow, psycopg2 for Postgres):
 
-Without `--reset`, `init-db` refuses to touch a database that already has accounts. On Postgres it also enables row level security on every table.
+   ```bash
+   python3 -m venv .venv
+   .venv/bin/pip install -r requirements.txt
+   ```
+
+2. Point `DATABASE_URL` at the database, as an environment variable or a line in `.env` (git-ignored).
+   - Supabase Postgres, through the session pooler (port 5432). `<project-ref>` is `vmzbgxyibhhvoucpugwd`; `<password>` is the database password from the Supabase dashboard.
+
+     ```
+     DATABASE_URL=postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+     ```
+
+   - Without `DATABASE_URL`, the app uses a local SQLite file, `instance/marketplacex.db`.
+
+3. Create the schema and seed the Tiki catalogue and demo accounts. This takes a few minutes on Supabase.
+
+   ```bash
+   .venv/bin/flask --app marketplacex.app init-db --reset   # drops, recreates and seeds the database
+   ```
+
+   - Without `--reset`, `init-db` refuses to touch a database that already has accounts.
+   - On Postgres it also enables row level security on every table. The app connects as the table owner, so RLS only closes Supabase's public API.
+
+4. Run the app and the tests:
+
+   ```bash
+   .venv/bin/flask --app marketplacex.app run       # http://127.0.0.1:5000
+   .venv/bin/python -m pytest -q                    # full test suite, on in-memory SQLite
+   .venv/bin/python -m pytest -q -m supabase        # live checks of the Supabase schema, seed and RLS
+   ```
+
+### Roles
+
+Every account has one role:
+- **customer**: browses, searches (text, voice, photo), buys, pays, reviews and requests returns.
+- **seller**: owns a shop; manages listings, fulfils orders and handles returns in Seller Center.
+- **admin**: runs the Admin Portal (operations dashboard, user and content governance, platform policy, audit log, Cases console).
 
 ### Demo accounts (password `demo123`; the login page also has one-click demo buttons)
 

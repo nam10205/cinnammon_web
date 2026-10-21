@@ -69,3 +69,21 @@ def test_tiki_variants_split_counts_and_original_price():
     same = seed_tiki._variants({**p, "list_price": 100000, "options": []})
     assert [v["name"] for v in same] == ["Default"] and same[0]["original_price_vnd"] is None
     assert seed_tiki.shop_email("GlowUp Beauty") == "glowupbeauty@demo"
+
+
+def test_init_db_reset_seeds_small_snapshot(app, monkeypatch):
+    small = _small_snapshot()
+    monkeypatch.setattr(tiki, "load_snapshot", lambda: small)
+    r = app.test_cli_runner().invoke(args=["init-db", "--reset"])
+    assert r.exit_code == 0, r.output
+    for line in ("categories: 8", "products: 24", "customers: 10", "orders: 20", "reviews: 20"):
+        assert line in r.output
+    assert "row level security" not in r.output
+
+
+def test_engine_options_only_for_postgres():
+    from marketplacex.app import create_app
+    lite = create_app({"SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    assert "pool_size" not in lite.config.get("SQLALCHEMY_ENGINE_OPTIONS", {})
+    pg = create_app({"SQLALCHEMY_DATABASE_URI": "postgresql+psycopg2://u:p@localhost:1/db"})
+    assert pg.config["SQLALCHEMY_ENGINE_OPTIONS"] == {"pool_pre_ping": True, "pool_size": 5}

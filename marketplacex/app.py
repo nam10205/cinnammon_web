@@ -35,6 +35,10 @@ def create_app(config: dict | None = None) -> Flask:
     app.config.from_object(Config)
     if config:
         app.config.update(config)
+    if str(app.config["SQLALCHEMY_DATABASE_URI"]).startswith("postgresql") \
+            and not app.config.get("SQLALCHEMY_ENGINE_OPTIONS"):
+        # A remote pooler (Supabase) drops idle connections; SQLite's pool rejects pool_size.
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True, "pool_size": 5}
     os.makedirs(os.path.join(os.path.dirname(app.root_path), "instance"), exist_ok=True)
     db.init_app(app)
 
@@ -137,6 +141,8 @@ def _register_cli(app: Flask) -> None:
         db.create_all()
         policy.ensure_defaults()
         counts = seed_tiki.run()
+        db.session.commit()  # release the session's locks so ALTER TABLE does not wait on them
+        db.session.close()
         rls = enable_rls()
         for k, v in counts.items():
             click.echo(f"{k}: {v}")
