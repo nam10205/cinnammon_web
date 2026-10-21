@@ -7,7 +7,7 @@ import uuid
 
 import click
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, session
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from .config import Config
 from .errors import DomainError
@@ -114,14 +114,30 @@ def enable_rls() -> int:
     return len(tables)
 
 
+def drop_everything() -> None:
+    """Drop every table, including leftovers of earlier schemas that no model describes."""
+    if db.engine.dialect.name != "postgresql":
+        db.drop_all()
+        return
+    quote = db.engine.dialect.identifier_preparer.quote
+    names = inspect(db.engine).get_table_names(schema="public")
+    with db.engine.begin() as conn:
+        for name in names:
+            conn.execute(text(f"DROP TABLE IF EXISTS {quote(name)} CASCADE"))
+
+
 def _register_cli(app: Flask) -> None:
     @app.cli.command("init-db")
     @click.option("--reset", is_flag=True, help="Drop every table first, then recreate and reseed.")
     def init_db_cmd(reset: bool):
-        """Create the schema and seed the Tiki.vn catalogue with demo customers."""
+        """Create the 8-table schema and seed the Tiki.vn catalogue with demo customers."""
         from . import seed_tiki
+        from .modules.identity.models import Customer
         if reset:
-            db.drop_all()
+            drop_everything()
+        elif inspect(db.engine).has_table("Customer") and db.session.query(Customer.id).first() is not None:
+            click.echo("Database already initialised; use --reset to wipe and reseed.")
+            raise SystemExit(1)
         db.create_all()
         counts = seed_tiki.run()
         db.session.commit()
