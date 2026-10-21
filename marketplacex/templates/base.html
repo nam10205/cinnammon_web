@@ -28,7 +28,7 @@
           {% if has_endpoint('order.my_orders') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('order.my_orders') }}">My orders</a></li>{% endif %}
           {% if has_endpoint('identity.profile') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('identity.profile') }}">Profile</a></li>{% endif %}
         {% elif role == 'seller' %}
-          {% if has_endpoint('seller.dashboard') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('seller.dashboard') }}">Seller Center</a></li>{% endif %}
+          {% if has_endpoint('seller.products') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('seller.products') }}">Seller Center</a></li>{% endif %}
         {% elif role == 'admin' %}
           {% if has_endpoint('admin.dashboard') %}<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Admin</a></li>{% endif %}
         {% endif %}

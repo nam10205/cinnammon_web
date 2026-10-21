@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import urllib.request
+
 from sqlalchemy.orm import selectinload
 
-from ...errors import NotFound
+from ... import clock
+from ...errors import NotFound, ValidationError
 from ...extensions import db
-from .models import Category, Product
+from .models import Category, Product, ProductImage
 
 SORTS = ("rating", "price_asc", "price_desc", "newest")
 
@@ -59,3 +62,83 @@ def get_category(category_id: int) -> Category:
     if c is None:
         raise NotFound("Category not found")
     return c
+
+
+def _int(value, message: str) -> int:
+    try:
+        n = int(str(value).strip())
+    except (TypeError, ValueError):
+        raise ValidationError(message)
+    if n < 0:
+        raise ValidationError(message)
+    return n
+
+
+def save_product(product: Product | None, category_id: int, title: str, brand: str, description: str,
+                 price: int, stock: int) -> Product:
+    title = (title or "").strip()
+    if not title or len(title) > 255:
+        raise ValidationError("Title is required (255 characters max)")
+    brand = (brand or "").strip() or "Unbranded"
+    if len(brand) > 255:
+        raise ValidationError("Brand is too long (255 characters max)")
+    description = (description or "").strip()
+    if len(description) > 255:
+        raise ValidationError("Description is too long (255 characters max)")
+    price = _int(price, "Price must be 0 or more")
+    stock = _int(stock, "Stock must be 0 or more")
+    get_category(category_id)
+    now = clock.now()
+    if product is None:
+        product = Product(created_at=now)
+        db.session.add(product)
+    product.category_id = category_id
+    product.title, product.brand, product.description = title, brand, description
+    product.price, product.stock_quantity = price, stock
+    product.updated_at = now
+    db.session.commit()
+    return product
+
+
+def fetch_image(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return r.read(5 * 1024 * 1024)
+
+
+def add_image(product: Product, url: str, fetch=fetch_image) -> ProductImage:
+    url = (url or "").strip()
+    if not url.startswith(("http://", "https://")) or len(url) > 500:
+        raise ValidationError("Enter an image URL starting with http(s)://")
+    from ..search.images import feature_vector, pack
+    try:
+        vector = pack(feature_vector(fetch(url)))
+    except Exception:
+        vector = None
+    image = ProductImage(product_id=product.id, url=url, feature_vector=vector)
+    db.session.add(image)
+    db.session.commit()
+    return image
+
+
+def remove_image(image_id: int) -> None:
+    image = db.session.get(ProductImage, image_id)
+    if image is None:
+        raise NotFound("Image not found")
+    db.session.delete(image)
+    db.session.commit()
+
+
+def seller_products(q: str = "", category_id: int | None = None, page: int = 1,
+                    per_page: int = 50) -> tuple[list[Product], int]:
+    query = db.session.query(Product)
+    if q.strip():
+        query = query.filter(Product.title.ilike(f"%{q.strip()}%"))
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+    total = query.count()
+    items = (query.options(selectinload(Product.images)).order_by(Product.id.desc())
+             .offset((max(1, page) - 1) * per_page).limit(per_page).all())
+    return items, total
