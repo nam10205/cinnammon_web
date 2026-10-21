@@ -1,6 +1,6 @@
 import pytest
 
-from helpers import product_id
+from helpers import image_vec, product_id
 from marketplacex.modules.search import service as search_service
 from marketplacex.modules.search.query import build_query
 
@@ -8,12 +8,11 @@ from marketplacex.modules.search.query import build_query
 @pytest.mark.parametrize("mode,text,image,top", [
     ("text", "black running shoes under 2 million", None, "P01"),
     ("voice", "wireless mouse under 500k", None, "P07"),
-    pytest.param("image", "", "black-sneaker", "P03",
-                 marks=pytest.mark.xfail(strict=True, reason="vectors in Task 6")),
+    ("image", "", "black", "P01"),
     ("text", "giày chạy bộ màu đen", None, "P01"),
 ])
 def test_prototype_top_results(seeded, mode, text, image, top):
-    r = search_service.search(build_query(mode, text=text, image_key=image))
+    r = search_service.search(build_query(mode, text=text, image_vector=image_vec(image)))
     assert r.items[0].product.id == product_id(top)
 
 
@@ -35,7 +34,7 @@ def test_empty_results_give_relax_hints(seeded):
 
 
 def test_unknown_image_falls_back_to_text_degraded(seeded):
-    r = search_service.search(build_query("image", text="mouse", image_key="upload"))
+    r = search_service.search(build_query("image", text="mouse", image_vector=None))
     assert r.degraded and r.items[0].product.id == product_id("P07")
 
 
@@ -73,7 +72,7 @@ def test_recommend_popular_without_customer(seeded):
 
 def test_search_page_renders(client, seeded):
     assert b"Nike Air Zoom" in client.get("/search?q=black+running+shoes").data
-    assert b"degraded" in client.get("/search?mode=image&image=upload&q=mouse").data.lower()
+    assert b"degraded" in client.get("/search?mode=image&q=mouse").data.lower()
 
 
 def test_search_history_rows(client, alice, login):
@@ -82,3 +81,57 @@ def test_search_history_rows(client, alice, login):
     client.get("/search?q=sneakers")
     row = SearchHistory.query.one()
     assert (row.keyword, row.search_type, row.customer_id) == ("sneakers", "text", alice.customer.id)
+
+
+def test_feature_vector_shape_and_similarity():
+    from marketplacex.modules.search.images import feature_vector, solid_image
+    from marketplacex.modules.search.ranking import cosine
+    black, black2, white = (feature_vector(solid_image(c)) for c in [(20, 20, 20), (25, 25, 25), (240, 240, 240)])
+    assert len(black) == 64
+    assert cosine(black, black2) > 0.99 and cosine(black, white) < 0.1
+
+
+def test_pack_unpack_roundtrip():
+    from marketplacex.modules.search.images import feature_vector, pack, solid_image, unpack
+    v = feature_vector(solid_image((20, 20, 20)))
+    assert unpack(pack(v)) == pytest.approx(v) and unpack(None) is None
+
+
+def test_upload_black_photo_finds_black_products(client, seeded):
+    import io
+    from marketplacex.modules.search.images import solid_image
+    r = client.post("/search/image", data={"photo": (io.BytesIO(solid_image((20, 20, 20))), "q.png")},
+                    content_type="multipart/form-data")
+    html = r.get_data(as_text=True)
+    assert r.status_code == 200 and "Biti&#39;s Hunter Black Sneakers" in html and "Women Linen Summer Dress" not in html
+
+
+def test_upload_non_image_flashes_error(client, seeded):
+    import io
+    r = client.post("/search/image", data={"photo": (io.BytesIO(b"not an image"), "x.jpg")},
+                    content_type="multipart/form-data", follow_redirects=True)
+    assert r.status_code == 200 and "That file is not an image" in r.get_data(as_text=True)
+
+
+def test_upload_missing_photo_flashes(client, seeded):
+    r = client.post("/search/image", data={}, content_type="multipart/form-data", follow_redirects=True)
+    assert "Choose a photo to search with" in r.get_data(as_text=True)
+
+
+def test_image_search_records_history(client, alice, login):
+    import io
+    from marketplacex.modules.search.images import solid_image
+    from marketplacex.modules.search.models import SearchHistory
+    login(client, alice)
+    client.post("/search/image", data={"photo": (io.BytesIO(solid_image((20, 20, 20))), "q.png")},
+                content_type="multipart/form-data")
+    row = SearchHistory.query.one()
+    assert (row.keyword, row.search_type) == ("[image]", "image")
+
+
+def test_find_similar_link_and_search(client, seeded):
+    from helpers import product_id
+    pid = product_id("P09")
+    assert f"/search?similar={pid}".encode() in client.get(f"/products/{pid}").data
+    html = client.get(f"/search?similar={pid}").get_data(as_text=True)
+    assert "Women Linen Summer Dress" in html and "Biti&#39;s Hunter" not in html

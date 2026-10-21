@@ -129,3 +129,10 @@ def valid_listing_data():
 def pending_product():
     from marketplacex.modules.catalog.models import Product
     return Product.query.filter_by(status="pending").first()
+
+
+def image_vec(color):
+    """Feature vector of a solid-colour photo; None means no image."""
+    from marketplacex.modules.search.images import feature_vector, solid_image
+    rgb = {"black": (20, 20, 20), "white": (240, 240, 240), "beige": (225, 200, 160)}.get(color)
+    return feature_vector(solid_image(rgb)) if rgb else None

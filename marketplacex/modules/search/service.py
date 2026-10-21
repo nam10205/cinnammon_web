@@ -16,6 +16,10 @@ from .query import Query, build_query
 from .ranking import cosine, lexical, score
 
 
+IMAGE_MATCH_THRESHOLD = 0.5
+IMAGE_MAX_RESULTS = 48
+
+
 @dataclass
 class ResultItem:
     offer: object
@@ -95,13 +99,15 @@ def search(q: Query, customer=None) -> SearchResult:
     trace_id = uuid.uuid4().hex[:12]
     city = _customer_city(customer)
     items = []
+    sims: dict = {}
     for o in catalog.active_offers().all():
         p = o.product
         stock = inventory.in_stock(o.id)
         if not _passes_filters(q, o, p, stock):
             continue
         if q.vector is not None:
-            if cosine(q.vector, p.image_vector) < 0.8:
+            sims[o.id] = cosine(q.vector, p.image_vector)
+            if sims[o.id] < IMAGE_MATCH_THRESHOLD:
                 continue
         elif q.terms and lexical(q, p) <= 0:
             continue
@@ -109,7 +115,11 @@ def search(q: Query, customer=None) -> SearchResult:
     sort = q.sort
     if sort == "relevance" and not q.terms and q.vector is None:
         sort = "sales"
-    items.sort(key=SORT_KEYS[sort])
+    if q.vector is not None and sort == "relevance":
+        items.sort(key=lambda i: (-sims[i.offer.id], i.offer.id))
+        items = items[:IMAGE_MAX_RESULTS]
+    else:
+        items.sort(key=SORT_KEYS[sort])
     facets = {
         "category": Counter(i.product.category.name for i in items).most_common(),
         "brand": Counter(i.product.brand for i in items).most_common(),

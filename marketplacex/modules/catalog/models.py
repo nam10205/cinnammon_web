@@ -44,8 +44,8 @@ class Product(db.Model):
 
     @property
     def image_vector(self) -> list[float] | None:
-        # Feature vectors are packed into ProductImage.featureVector in Task 6; nothing is stored yet.
-        return None
+        from ..search.images import unpack
+        return unpack(self.images[0].feature_vector) if self.images else None
 
 
 class ProductImage(db.Model):

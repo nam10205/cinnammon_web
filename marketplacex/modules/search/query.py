@@ -5,8 +5,6 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from .images import SAMPLE_IMAGES
-
 SYNONYMS = {"khong day": "wireless", "giay": "shoes", "chay": "running", "bo": "", "mau": "", "den": "black",
             "trang": "white", "chuot": "mouse", "ao": "shirt"}
 STOPWORDS = {"under", "below", "duoi", "for", "the", "a", "an", "with", "in", "of"}
@@ -21,7 +19,7 @@ class Query:
     terms: list = field(default_factory=list)
     max_price: int | None = None
     min_price: int | None = None
-    vector: tuple | None = None
+    vector: list | None = None
     filters: dict = field(default_factory=dict)
     sort: str = "relevance"
     degraded: bool = False
@@ -74,18 +72,17 @@ def _terms(text: str) -> list[str]:
     return out
 
 
-def build_query(mode: str, text: str = "", image_key: str | None = None, filters: dict | None = None,
+def build_query(mode: str, text: str = "", image_vector: list[float] | None = None, filters: dict | None = None,
                 sort: str = "relevance") -> Query:
     mode = mode if mode in ("text", "voice", "image") else "text"
     q = Query(type=mode, raw=text or "", filters={k: v for k, v in (filters or {}).items() if v not in (None, "")},
               sort=sort if sort in SORTS else "relevance")
     if mode == "image":
-        vec = SAMPLE_IMAGES.get(image_key or "")
-        if vec is None:
+        if not image_vector:
             # Image encoding failed: fall back to text and mark the response degraded (report §4.2).
             q.type, q.degraded = "text", True
         else:
-            q.vector = vec
+            q.vector = list(image_vector)
     norm = normalize(text)
     norm, q.max_price = _parse_price(norm)
     q.terms = _terms(norm)

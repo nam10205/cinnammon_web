@@ -6,6 +6,7 @@ from datetime import timedelta
 from .extensions import db
 from .modules.admin import policy
 from .modules.admin.policy import ensure_defaults
+from .modules.search.images import feature_vector, pack, solid_image
 from .seed_bulk import prototype_photo, seed_bulk_catalog, seed_extra_customers  # noqa: F401
 
 DEMO_PASSWORD = "demo123"
@@ -48,6 +49,7 @@ PRODUCTS = {
     "P12": ("Skincare Sunscreen SPF50", "StyleHouse", "StyleHouse", "Beauty", 489000, None, 4.9, 1500, (0.15, 0.30, 0.85), "white",
             "Skincare sunscreen SPF50 for daily protection."),
 }
+COLOR_RGB = {"black": (20, 20, 20), "white": (240, 240, 240), "beige": (225, 200, 160)}
 SEED_KEYS = {k: v[0] for k, v in PRODUCTS.items()}
 
 
@@ -92,7 +94,8 @@ def seed_catalog() -> None:
             shops[shop], cats[cat], title, brand, desc, attrs,
             [{"name": "Default", "price_vnd": price, "original_price_vnd": orig, "stock": 50, "purchase_limit": 5,
               "sold_count": sold, "rating_avg": rating}],
-            image_urls=[prototype_photo(key)], vectors=None, status="active",  # vectors: Task 6
+            image_urls=[prototype_photo(key)], vectors=[pack(feature_vector(solid_image(COLOR_RGB[color])))],
+            status="active",
             created_at=policy.now() - timedelta(days=age))
 
 

@@ -1,7 +1,7 @@
 """Extended demo catalogue from the dummyjson snapshot, with online product photos."""
 import pytest
 
-from helpers import product_id
+from helpers import image_vec, product_id
 from marketplacex.modules.catalog.models import Product
 from marketplacex.modules.search import service as search_service
 from marketplacex.modules.search.query import build_query
@@ -37,12 +37,11 @@ def test_prices_converted_to_vnd(bulk):
 @pytest.mark.parametrize("mode,text,image,top", [
     ("text", "black running shoes under 2 million", None, "P01"),
     ("voice", "wireless mouse under 500k", None, "P07"),
-    pytest.param("image", "", "black-sneaker", "P03",
-                 marks=pytest.mark.xfail(strict=True, reason="vectors in Task 6")),
+    ("image", "", "black", "P01"),
     ("text", "giày chạy bộ màu đen", None, "P01"),
 ])
 def test_prototype_results_survive_bulk_catalog(bulk, mode, text, image, top):
-    r = search_service.search(build_query(mode, text=text, image_key=image))
+    r = search_service.search(build_query(mode, text=text, image_vector=image_vec(image)))
     assert r.items[0].product.id == product_id(top)
 
 
