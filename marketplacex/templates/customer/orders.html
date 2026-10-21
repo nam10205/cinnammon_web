@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My orders · MarketplaceX{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">My orders</h1>
+{% if not groups %}
+  <p class="text-muted">You have no orders yet.</p>
+  <a class="btn btn-primary" href="{{ url_for('catalog.home') }}">Start shopping</a>
+{% endif %}
+{% for g in groups %}
+<div class="card mb-3">
+  <div class="card-header small text-muted">Placed {{ g[0].ordered_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+  <ul class="list-group list-group-flush">
+  {% for o in g %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <a href="{{ url_for('order.detail', order_id=o.id) }}">#{{ o.id }} · {{ o.product.title }}</a>
+        <span class="text-muted">× {{ o.quantity }}</span>
+      </div>
+      <div class="text-end">
+        <span class="badge text-bg-secondary">{{ o.status }}</span>
+        <span class="badge text-bg-light border">{{ o.payment_status }}</span>
+        <span class="ms-2">{{ o.total_price|vnd }}</span>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+</div>
+{% endfor %}
+{% endblock %}

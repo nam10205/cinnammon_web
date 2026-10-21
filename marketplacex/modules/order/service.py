@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from ... import clock
-from ...errors import InsufficientStock, ValidationError
+from ...errors import IllegalTransition, InsufficientStock, NotFound, ValidationError
 from ...extensions import db
 from ..catalog.models import Product
 from .models import Order
@@ -56,3 +58,96 @@ def checkout(customer, cart: dict[int, int], payment_method: str,
     db.session.add_all(orders)
     db.session.commit()
     return orders
+
+
+STEPS = ("placed", "processing", "shipped", "delivered")
+_ACTIVE = ("placed", "processing", "shipped")
+
+
+def _deliver(order, at) -> None:
+    order.status = "delivered"
+    order.delivered_at = at
+    if order.payment_method == "cod" and order.payment_status == "unpaid":
+        order.payment_status = "paid"
+
+
+def advance_due() -> int:
+    now = clock.now()
+    step = timedelta(seconds=STEP_SECONDS)
+    changed = 0
+    for o in db.session.query(Order).filter(Order.status.in_(_ACTIVE)).all():
+        moved = False
+        while True:
+            if o.status == "placed" and now >= o.ordered_at + step:
+                o.status = "processing"
+            elif o.status == "processing" and now >= o.ordered_at + 2 * step:
+                o.status = "shipped"
+                o.shipped_at = o.ordered_at + 2 * step
+            elif o.status == "shipped" and now >= o.shipped_at + step:
+                _deliver(o, o.shipped_at + step)
+            else:
+                break
+            moved = True
+        changed += moved
+    db.session.commit()
+    return changed
+
+
+def skip_step(order) -> None:
+    now = clock.now()
+    if order.status == "placed":
+        order.status = "processing"
+    elif order.status == "processing":
+        order.status = "shipped"
+        order.shipped_at = now
+    elif order.status == "shipped":
+        _deliver(order, now)
+    else:
+        raise IllegalTransition(f"Order is already {order.status}")
+    db.session.commit()
+
+
+def cancel(order) -> None:
+    advance_due()
+    if order.status not in ("placed", "processing"):
+        raise IllegalTransition("Only orders that have not shipped can be cancelled")
+    order.product.stock_quantity += order.quantity
+    order.product.updated_at = clock.now()
+    if order.payment_status == "paid":
+        order.payment_status = "refunded"
+    order.status = "cancelled"
+    db.session.commit()
+
+
+def orders_for_customer(customer) -> list[list[Order]]:
+    advance_due()
+    rows = (db.session.query(Order).filter(Order.customer_id == customer.id)
+            .order_by(Order.ordered_at.desc(), Order.id).all())
+    groups: list[list[Order]] = []
+    for o in rows:
+        if groups and groups[-1][0].ordered_at == o.ordered_at:
+            groups[-1].append(o)
+        else:
+            groups.append([o])
+    return groups
+
+
+def get_order(order_id: int) -> Order:
+    o = db.session.get(Order, order_id)
+    if o is None:
+        raise NotFound("Order not found")
+    return o
+
+
+def progress(order) -> dict:
+    step = timedelta(seconds=STEP_SECONDS)
+    iso = lambda d: d.isoformat() if d else None
+    if order.status == "cancelled":
+        done = {"placed"}
+    else:
+        done = set(STEPS[:STEPS.index(order.status) + 1])
+    at = {"placed": order.ordered_at, "processing": order.ordered_at + step,
+          "shipped": order.shipped_at, "delivered": order.delivered_at}
+    return {"status": order.status, "payment_status": order.payment_status,
+            "steps": [{"name": n, "done": n in done, "at": iso(at[n]) if n in done else None}
+                      for n in STEPS]}
