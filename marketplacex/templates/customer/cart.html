@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Cart · MarketplaceX{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Your cart</h1>
+{% if not lines %}
+  <p class="text-muted">Your cart is empty.</p>
+  <a class="btn btn-primary" href="{{ url_for('catalog.home') }}">Keep shopping</a>
+{% else %}
+<table class="table align-middle">
+  <thead><tr><th>Product</th><th class="text-end">Price</th><th style="width:150px">Qty</th><th class="text-end">Total</th><th></th></tr></thead>
+  <tbody>
+  {% for l in lines %}
+    <tr>
+      <td><a href="{{ url_for('catalog.product', product_id=l.product.id) }}">{{ l.product.title }}</a></td>
+      <td class="text-end">{{ l.product.price|vnd }}</td>
+      <td>
+        <form method="post" action="{{ url_for('cart.update') }}" class="d-flex gap-1">
+          <input type="hidden" name="product_id" value="{{ l.product.id }}">
+          <input class="form-control form-control-sm" type="number" name="qty" min="0" max="{{ l.product.stock_quantity }}" value="{{ l.qty }}">
+          <button class="btn btn-sm btn-outline-secondary">Update</button>
+        </form>
+      </td>
+      <td class="text-end">{{ l.line_total|vnd }}</td>
+      <td>
+        <form method="post" action="{{ url_for('cart.remove') }}">
+          <input type="hidden" name="product_id" value="{{ l.product.id }}">
+          <button class="btn btn-sm btn-outline-danger">Remove</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<dl class="row justify-content-end text-end">
+  <dt class="col-sm-3">Subtotal</dt><dd class="col-sm-2">{{ subtotal|vnd }}</dd>
+  <dt class="col-sm-3">Shipping</dt><dd class="col-sm-2">{{ fee|vnd }}</dd>
+  <dt class="col-sm-3">Total</dt><dd class="col-sm-2 fw-bold">{{ total|vnd }}</dd>
+</dl>
+<div class="text-end"><a class="btn btn-primary" href="{{ url_for('order.checkout') }}">Checkout</a></div>
+{% endif %}
+{% endblock %}
