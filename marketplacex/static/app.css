@@ -412,3 +412,13 @@ h1, .h3 { font-size: 1.75rem; }
 .crop-stage .cropper-view-box { outline: 2px solid var(--brass); }
 .crop-stage .cropper-line, .crop-stage .cropper-point { background-color: var(--brass); }
 @media (max-width: 575.98px) { .crop-stage { height: 240px; } }
+
+/* Search box: recent searches dropdown */
+.search-recent { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; right: 0; margin: 0; padding: .4rem 0; list-style: none; background: #fff; color: var(--ink); border-radius: 14px; box-shadow: 0 12px 32px rgba(15, 35, 26, .22); overflow: hidden; }
+.search-recent-head { padding: .3rem 1rem .4rem; font-size: .74rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6b7770; }
+.search-recent-item { display: flex; align-items: center; gap: .75rem; padding: .55rem 1rem; cursor: pointer; }
+.search-recent-item i { color: #6b7770; flex: none; }
+.search-recent-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-recent-text b { font-weight: 700; }
+.search-recent-item:hover, .search-recent-item.is-active { background: var(--bag-tint); }
+.search-recent-item.is-active i { color: var(--bag); }

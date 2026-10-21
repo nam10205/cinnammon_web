@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 from ... import auth
 from ...errors import ValidationError
@@ -31,6 +31,11 @@ def search():
         return _render([], "Search", q)
     service.record(auth.current_customer(), q, mode)
     return _render(service.search_text(q), f"Results for “{q}”", q)
+
+
+@bp.get("/api/search/history")
+def history():
+    return jsonify({"items": service.recent_keywords(auth.current_customer())})
 
 
 @bp.post("/search/image")

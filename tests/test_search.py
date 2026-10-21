@@ -69,3 +69,15 @@ def test_photo_search_falls_back_to_colour_when_gemini_times_out(client, demo, m
                     content_type="multipart/form-data")
     page = r.get_data(as_text=True)
     assert r.status_code == 200 and "Results for your photo" in page and "matched by colour" in page
+
+
+def test_history_api_lists_distinct_keywords_newest_first(client, demo, login_as, clock):
+    assert client.get("/api/search/history").get_json() == {"items": []}
+    login_as(client, "customer", demo.alice)
+    for q, mode in (("iphone", "text"), ("sách", "voice"), ("IPHONE", "text")):
+        client.get("/search", query_string={"q": q, "mode": mode})
+        clock.advance(1)
+    client.post("/search/image", data={"photo": (io.BytesIO(solid_image((220, 30, 30))), "red.png")},
+                content_type="multipart/form-data")
+    assert client.get("/api/search/history").get_json()["items"] == [
+        {"q": "IPHONE", "type": "text"}, {"q": "sách", "type": "voice"}]
