@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign up · MarketplaceX{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-7">
+  <h1 class="h3 mb-3">Sign up</h1>
+  <form method="post" class="row g-3">
+    {% for name, label, req in [('first_name','First name',1),('middle_name','Middle name',0),('last_name','Last name',1),('email','Email',1),('phone','Phone',1),('ward','Ward',1),('street','Street',1),('detail','Detail',1)] %}
+    <div class="col-md-{{ 12 if name in ('email','detail') else 6 }}">
+      <label class="form-label" for="{{ name }}">{{ label }}</label>
+      <input class="form-control" id="{{ name }}" name="{{ name }}" value="{{ form.get(name) or '' }}" maxlength="255" {{ 'required' if req }}>
+    </div>
+    {% endfor %}
+    <div class="col-12"><button class="btn btn-primary">Create account</button></div>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Log in · MarketplaceX{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+  <h1 class="h3 mb-3">Log in</h1>
+  <p class="text-muted">Demo only: there are no passwords.</p>
+  <div class="d-grid gap-2 mb-4">
+    {% for who, label in [('customer', 'Continue as demo customer'), ('seller', 'Continue as seller'), ('admin', 'Continue as admin')] %}
+    <form method="post" action="/login/quick/{{ who }}">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="btn btn-{{ 'primary' if who == 'customer' else 'outline-secondary' }} w-100">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  <form method="post" action="/login/email" class="mb-3">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <label class="form-label" for="email">Customer email</label>
+    <div class="input-group">
+      <input class="form-control" id="email" name="email" type="text" placeholder="alice@demo" required>
+      <button class="btn btn-primary">Log in</button>
+    </div>
+  </form>
+  <a href="{{ url_for('identity.signup') }}">Sign up</a>
+</div></div>
+{% endblock %}

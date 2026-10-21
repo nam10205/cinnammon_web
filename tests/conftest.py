@@ -40,11 +40,16 @@ def clock(monkeypatch):
     return c
 
 
-def login_as(client, role, customer=None):
+def _login_as(client, role, customer=None):
     with client.session_transaction() as s:
         s["role"] = role
         if customer is not None:
             s["customer_id"] = customer.id
+
+
+@pytest.fixture
+def login_as():
+    return _login_as
 
 
 @pytest.fixture
