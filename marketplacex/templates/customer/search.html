@@ -34,6 +34,7 @@
 
 <div class="row g-3">
   <aside class="col-lg-3">
+    {% if photo_upload %}<div class="card card-body small text-muted">Filters aren't available for photo searches — try Find similar on a product.</div>{% else %}
     <form action="/search" class="card card-body small">
       <input type="hidden" name="q" value="{{ args.get('q', '') }}"><input type="hidden" name="mode" value="{{ mode }}">
       {% if args.get('similar') %}<input type="hidden" name="similar" value="{{ args.get('similar') }}">{% endif %}
@@ -61,6 +62,7 @@
       <button class="btn btn-sm btn-outline-primary">Apply filters</button>
       {% if result.facets.category %}<hr><div class="text-muted">Categories: {% for n, c in result.facets.category %}{{ n }} ({{ c }}){{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
     </form>
+    {% endif %}
   </aside>
   <div class="col-lg-9">
     <div class="small text-muted mb-2">{{ result.items|length }} results · query {{ q.type }} · terms {{ q.terms|join(', ') or '—' }}{% if q.max_price %} · under {{ q.max_price|vnd }}{% endif %} · trace {{ result.trace_id }}</div>

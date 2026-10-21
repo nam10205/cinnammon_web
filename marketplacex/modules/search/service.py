@@ -116,7 +116,7 @@ def search(q: Query, customer=None) -> SearchResult:
     if sort == "relevance" and not q.terms and q.vector is None:
         sort = "sales"
     if q.vector is not None and sort == "relevance":
-        items.sort(key=lambda i: (-sims[i.offer.id], i.offer.id))
+        items.sort(key=lambda i: (-sims[i.offer.id], -i.score, i.offer.id))
         items = items[:IMAGE_MAX_RESULTS]
     else:
         items.sort(key=SORT_KEYS[sort])

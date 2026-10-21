@@ -3,7 +3,7 @@ from __future__ import annotations
 from flask import Blueprint, flash, redirect, render_template, request
 
 from ...auth import current_user
-from ...errors import ValidationError
+from ...errors import NotFound, ValidationError
 from ..catalog import service as catalog
 from ..catalog.models import Product
 from ...extensions import db
@@ -19,8 +19,9 @@ def _customer():
     return u if u and u.role == "customer" else None
 
 
-def _render(result, q, args, mode):
+def _render(result, q, args, mode, photo_upload=False):
     return render_template("customer/search.html", result=result, q=q, args=args, mode=mode,
+                           photo_upload=photo_upload,
                            categories=catalog.category_tree())
 
 
@@ -38,7 +39,9 @@ def search():
     if a.get("similar", type=int):
         mode = "image"
         product = db.session.get(Product, a.get("similar", type=int))
-        vector = product.image_vector if product else None
+        if product is None:
+            raise NotFound("Product not found")
+        vector = product.image_vector
     q = build_query(mode, text=a.get("q", ""), image_vector=vector, filters=filters, sort=a.get("sort", "relevance"))
     customer = _customer()
     result = service.search(q, customer)
@@ -69,4 +72,4 @@ def search_image():
     if customer:
         from ..cart import service as cart
         cart.record_search(customer, "[image]", "image")
-    return _render(result, q, request.args, "image")
+    return _render(result, q, request.args, "image", photo_upload=True)

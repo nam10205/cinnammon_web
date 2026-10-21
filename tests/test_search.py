@@ -8,7 +8,7 @@ from marketplacex.modules.search.query import build_query
 @pytest.mark.parametrize("mode,text,image,top", [
     ("text", "black running shoes under 2 million", None, "P01"),
     ("voice", "wireless mouse under 500k", None, "P07"),
-    ("image", "", "black", "P01"),
+    ("image", "", "black", "P01"),   # identical black vectors tie on similarity; ranking score (rating) picks P01
     ("text", "giày chạy bộ màu đen", None, "P01"),
 ])
 def test_prototype_top_results(seeded, mode, text, image, top):
@@ -135,3 +135,16 @@ def test_find_similar_link_and_search(client, seeded):
     assert f"/search?similar={pid}".encode() in client.get(f"/products/{pid}").data
     html = client.get(f"/search?similar={pid}").get_data(as_text=True)
     assert "Women Linen Summer Dress" in html and "Biti&#39;s Hunter" not in html
+
+
+def test_upload_results_hide_filter_form(client, seeded):
+    import io
+    from marketplacex.modules.search.images import solid_image
+    html = client.post("/search/image", data={"photo": (io.BytesIO(solid_image((20, 20, 20))), "q.png")},
+                       content_type="multipart/form-data").get_data(as_text=True)
+    assert 'name="sort"' not in html and "Filters aren" in html
+    assert 'name="sort"' in client.get("/search?q=shoes").get_data(as_text=True)
+
+
+def test_similar_unknown_product_is_404(client, seeded):
+    assert client.get("/search?similar=999999").status_code == 404

@@ -22,31 +22,31 @@ USERS = [
 SHOPS = [("SportZone", "sportzone@demo", "Hanoi"), ("TechHub", "techhub@demo", "Ho Chi Minh City"),
          ("StyleHouse", "stylehouse@demo", "Da Nang")]
 
-# key: (title, brand, shop, category, price, original, rating, sold, vector, color, description)
+# key: (title, brand, shop, category, price, original, rating, sold, color, description)
 PRODUCTS = {
-    "P01": ("Nike Air Zoom Black Running Shoes", "Nike", "SportZone", "Shoes", 1990000, 2490000, 4.9, 1200, (0.80, 0.30, 0.20), "black",
+    "P01": ("Nike Air Zoom Black Running Shoes", "Nike", "SportZone", "Shoes", 1990000, 2490000, 4.9, 1200, "black",
             "Lightweight Nike running shoes in black with responsive cushioning (giày chạy bộ màu đen)."),
-    "P02": ("Adidas Ultraboost White Running Shoes", "Adidas", "SportZone", "Shoes", 2350000, None, 4.8, 900, (0.85, 0.25, 0.15), "white",
+    "P02": ("Adidas Ultraboost White Running Shoes", "Adidas", "SportZone", "Shoes", 2350000, None, 4.8, 900, "white",
             "Adidas Ultraboost running shoes in white with boost midsole."),
-    "P03": ("Biti's Hunter Black Sneakers", "Biti's", "SportZone", "Shoes", 899000, 1050000, 4.7, 3000, (0.93, 0.09, 0.11), "black",
+    "P03": ("Biti's Hunter Black Sneakers", "Biti's", "SportZone", "Shoes", 899000, 1050000, 4.7, 3000, "black",
             "Vietnamese Biti's Hunter sneakers in black for everyday wear (giày sneaker màu đen)."),
-    "P04": ("Converse Classic Canvas Shoes", "Converse", "SportZone", "Shoes", 1450000, None, 4.6, 500, (0.75, 0.20, 0.40), "white",
+    "P04": ("Converse Classic Canvas Shoes", "Converse", "SportZone", "Shoes", 1450000, None, 4.6, 500, "white",
             "Converse classic canvas shoes, a timeless low-top."),
-    "P05": ("Sony Wireless Noise Cancelling Headphones", "Sony", "TechHub", "Accessories", 6490000, 7490000, 4.8, 300, (0.10, 0.90, 0.20), "black",
+    "P05": ("Sony Wireless Noise Cancelling Headphones", "Sony", "TechHub", "Accessories", 6490000, 7490000, 4.8, 300, "black",
             "Sony wireless noise cancelling headphones with 30-hour battery."),
-    "P06": ("Anker 65W USB-C Charger", "Anker", "TechHub", "Accessories", 590000, None, 4.7, 800, (0.05, 0.85, 0.10), "white",
+    "P06": ("Anker 65W USB-C Charger", "Anker", "TechHub", "Accessories", 590000, None, 4.7, 800, "white",
             "Compact Anker 65W USB-C charger for laptops and phones."),
-    "P07": ("Logitech Wireless Mouse", "Logitech", "TechHub", "Accessories", 429000, 499000, 4.8, 2500, (0.10, 0.95, 0.05), "black",
+    "P07": ("Logitech Wireless Mouse", "Logitech", "TechHub", "Accessories", 429000, 499000, 4.8, 2500, "black",
             "Logitech wireless mouse with silent clicks and long battery life."),
-    "P08": ("Puma Black Sport Socks", "Puma", "SportZone", "Clothing", 99000, None, 4.5, 4000, (0.60, 0.10, 0.70), "black",
+    "P08": ("Puma Black Sport Socks", "Puma", "SportZone", "Clothing", 99000, None, 4.5, 4000, "black",
             "Puma black sport socks, pack of three."),
-    "P09": ("Women Linen Summer Dress", "StyleHouse", "StyleHouse", "Clothing", 349000, 450000, 4.6, 700, (0.20, 0.10, 0.95), "beige",
+    "P09": ("Women Linen Summer Dress", "StyleHouse", "StyleHouse", "Clothing", 349000, 450000, 4.6, 700, "beige",
             "Breathable women linen summer dress."),
-    "P10": ("RGB Mechanical Keyboard", "Keychron", "TechHub", "Accessories", 1190000, None, 4.7, 600, (0.10, 0.88, 0.30), "black",
+    "P10": ("RGB Mechanical Keyboard", "Keychron", "TechHub", "Accessories", 1190000, None, 4.7, 600, "black",
             "RGB mechanical keyboard with hot-swappable switches."),
-    "P11": ("Men Cotton T Shirt Black", "StyleHouse", "StyleHouse", "Clothing", 129000, None, 4.6, 5000, (0.25, 0.05, 0.90), "black",
+    "P11": ("Men Cotton T Shirt Black", "StyleHouse", "StyleHouse", "Clothing", 129000, None, 4.6, 5000, "black",
             "Men cotton t shirt in black, regular fit."),
-    "P12": ("Skincare Sunscreen SPF50", "StyleHouse", "StyleHouse", "Beauty", 489000, None, 4.9, 1500, (0.15, 0.30, 0.85), "white",
+    "P12": ("Skincare Sunscreen SPF50", "StyleHouse", "StyleHouse", "Beauty", 489000, None, 4.9, 1500, "white",
             "Skincare sunscreen SPF50 for daily protection."),
 }
 COLOR_RGB = {"black": (20, 20, 20), "white": (240, 240, 240), "beige": (225, 200, 160)}
@@ -85,7 +85,7 @@ def seed_catalog() -> None:
             "Accessories": add_cat("Accessories", electronics), "Beauty": add_cat("Beauty")}
     db.session.commit()
 
-    for key, (title, brand, shop, cat, price, orig, rating, sold, _vec, color, desc) in PRODUCTS.items():
+    for key, (title, brand, shop, cat, price, orig, rating, sold, color, desc) in PRODUCTS.items():
         attrs = {"color": color}
         if cat == "Shoes":
             attrs["size"] = "42"

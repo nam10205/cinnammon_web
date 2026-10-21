@@ -15,6 +15,7 @@ BINS = 64
 def feature_vector(image_bytes: bytes) -> list[float]:
     try:
         img = Image.open(io.BytesIO(image_bytes))
+        img.draft("RGB", (64, 64))   # JPEG: decode at reduced size to cap memory
         img = img.convert("RGB").resize((64, 64))
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise ValidationError("That file is not an image")
