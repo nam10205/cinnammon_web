@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_cards.html" import product_card %}
+{% block title %}{{ heading }} · MarketplaceX{% endblock %}
+{% block content %}
+<h1 class="h3">{{ heading }}</h1>
+<form class="row g-2 mb-4" method="post" action="{{ url_for('search.search_image') }}" enctype="multipart/form-data">
+  <div class="col-auto"><input class="form-control" type="file" name="photo" accept="image/*" aria-label="Photo"></div>
+  <div class="col-auto"><button class="btn btn-outline-primary"><i class="bi bi-camera"></i> Search by photo</button></div>
+</form>
+{% if history %}
+<div class="mb-4">
+  <h2 class="h6 text-muted">Recent searches</h2>
+  <ul class="list-inline">
+    {% for h in history %}<li class="list-inline-item"><span class="badge text-bg-light">{{ h.keyword }} <span class="text-muted">({{ h.search_type }})</span></span></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+<div class="row row-cols-2 row-cols-md-4 g-3">{% for p in products %}{{ product_card(p) }}{% else %}<p class="text-muted">No products found.</p>{% endfor %}</div>
+{% endblock %}
