@@ -6,8 +6,9 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from ...extensions import db
+from ...extensions import commit_keeping_loaded, db
 from ..admin import policy
+from ..admin.models import Clock
 from ..catalog import service as catalog
 from ..catalog.models import Product
 from ..inventory import service as inventory
@@ -100,9 +101,14 @@ def search(q: Query, customer=None) -> SearchResult:
     city = _customer_city(customer)
     items = []
     sims: dict = {}
-    for o in catalog.active_offers().all():
+    # score() reads policy.now() per offer; holding the Clock row keeps it in the session's (weak) identity
+    # map so that is not one query per offer.
+    clock = db.session.get(Clock, 1)  # noqa: F841
+    offers = catalog.active_offers().all()
+    stocks = inventory.in_stock_many([o.id for o in offers])
+    for o in offers:
         p = o.product
-        stock = inventory.in_stock(o.id)
+        stock = stocks.get(o.id, 0)
         if not _passes_filters(q, o, p, stock):
             continue
         if q.vector is not None:
@@ -130,7 +136,7 @@ def search(q: Query, customer=None) -> SearchResult:
         res.relax_hints = _relax_hints(q)
     db.session.add(SearchTrace(trace_id=trace_id, customer_id=getattr(customer, "id", None), query_json=q.as_dict(),
                                result_count=len(items), degraded=q.degraded, at=policy.now()))
-    db.session.commit()
+    commit_keeping_loaded()
     return res
 
 

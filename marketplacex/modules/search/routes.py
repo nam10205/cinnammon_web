@@ -44,13 +44,14 @@ def search():
         vector = product.image_vector
     q = build_query(mode, text=a.get("q", ""), image_vector=vector, filters=filters, sort=a.get("sort", "relevance"))
     customer = _customer()
-    result = service.search(q, customer)
+    # Recorded first: its commit would otherwise expire every row the search loaded for rendering.
     if customer and mode != "image" and a.get("q", "").strip():
         try:
             from ..cart import service as cart
             cart.record_search(customer, a.get("q").strip())
         except ImportError:
             pass
+    result = service.search(q, customer)
     return _render(result, q, a, mode)
 
 
@@ -68,8 +69,8 @@ def search_image():
         return redirect("/search?mode=image")
     q = build_query("image", image_vector=vector)
     customer = _customer()
-    result = service.search(q, customer)
     if customer:
         from ..cart import service as cart
         cart.record_search(customer, "[image]", "image")
+    result = service.search(q, customer)
     return _render(result, q, request.args, "image", photo_upload=True)

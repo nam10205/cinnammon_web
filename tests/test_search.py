@@ -148,3 +148,41 @@ def test_upload_results_hide_filter_form(client, seeded):
 
 def test_similar_unknown_product_is_404(client, seeded):
     assert client.get("/search?similar=999999").status_code == 404
+
+
+def _count_queries(fn):
+    from sqlalchemy import event
+    from marketplacex.extensions import db
+    n = [0]
+
+    def _c(*a):
+        n[0] += 1
+    event.listen(db.engine, "before_cursor_execute", _c)
+    try:
+        fn()
+    finally:
+        event.remove(db.engine, "before_cursor_execute", _c)
+    return n[0]
+
+
+def test_search_and_listing_queries_do_not_grow_per_offer(seeded, client):
+    """A remote database (Supabase, ~90 ms a round trip) cannot afford one lazy load per offer."""
+    from marketplacex.extensions import db
+    from marketplacex.modules.search import service
+    from marketplacex.modules.search.query import build_query
+    db.session.expunge_all()
+    n = _count_queries(lambda: service.search(build_query("text", "")))
+    assert n <= 12, n
+    db.session.expunge_all()
+    n = _count_queries(lambda: client.get("/search?q="))
+    assert n <= 20, n
+    from helpers import cat
+    cid = cat("Fashion").id
+    db.session.expunge_all()
+    n = _count_queries(lambda: client.get(f"/category/{cid}"))
+    assert n <= 15, n
+    client.post("/demo-login/customer")
+    client.get("/search?q=shoes")   # gives alice a recent search, so recommendations run a search too
+    db.session.expunge_all()
+    n = _count_queries(lambda: client.get("/"))
+    assert n <= 60, n

@@ -35,6 +35,15 @@ def in_stock(offer_id: int) -> int:
     return led.available if led else 0
 
 
+def in_stock_many(offer_ids: list[int]) -> dict[int, int]:
+    """Available quantity per offer id, in one query; offers without a ledger are absent (0 stock)."""
+    if not offer_ids:
+        return {}
+    rows = db.session.query(StockLedger.offer_id, StockLedger.available).filter(
+        StockLedger.offer_id.in_(offer_ids)).all()
+    return dict(rows)
+
+
 def set_stock(offer_id: int, available: int) -> None:
     if int(available) < 0:
         raise ValidationError("Stock cannot be negative")

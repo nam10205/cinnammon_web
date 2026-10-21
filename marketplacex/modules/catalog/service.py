@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.orm import contains_eager, selectinload
+
 from ...errors import NotFound, ValidationError
 from ...events import publish
 from ...extensions import db
@@ -144,7 +146,15 @@ def category_and_descendants(category: Category) -> list[int]:
 
 
 def active_offers():
-    return Offer.query.join(Variant).join(Product).filter(Product.status == "active")
+    """Active offers with variant, product, images and sibling variants loaded in the same few queries.
+
+    Listing pages and search touch all of them per offer; lazy loads would cost one round trip each on a
+    remote database.
+    """
+    product = contains_eager(Offer.variant).contains_eager(Variant.product)
+    return (Offer.query.join(Variant).join(Product).filter(Product.status == "active")
+            .options(product.selectinload(Product.images), product.selectinload(Product.variants),
+                     selectinload(Offer.shop)))
 
 
 def popular_offers(limit: int = 12) -> list[Offer]:
