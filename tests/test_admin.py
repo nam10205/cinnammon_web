@@ -23,8 +23,8 @@ def test_category_delete_refused_when_not_empty(client, demo, login_as):
 
 def test_customer_detail_shows_history_and_orders(client, demo, login_as):
     from marketplacex.modules.order import service as orders
-    from marketplacex.modules.search import service as search
-    search.record(demo.alice, "tai nghe", "voice")
+    from marketplacex.modules.search.controller import SearchController
+    SearchController.confirm_voice_text(demo.alice, "tai nghe")
     orders.checkout(demo.alice, {demo.book.id: 1}, "cod")
     login_as(client, "admin")
     html = client.get(f"/admin/customers/{demo.alice.id}").get_data(as_text=True)

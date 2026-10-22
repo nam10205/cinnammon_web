@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 
-from .query import Query, stem, tokenize
+from .query import SearchQuery, stem, tokenize
 
 
 def cosine(a, b) -> float:
@@ -26,6 +26,6 @@ def _fraction(terms: list[str], tokens: set, alts: dict | None = None) -> float:
     return sum(1 for t in terms if hit(t)) / len(terms)
 
 
-def lexical(q: Query, product) -> float:
+def lexical(q: SearchQuery, product) -> float:
     text = " ".join([product.title, product.brand or "", product.category.name, product.description or ""])
     return _fraction(q.terms, set(tokenize(text)), q.alts)

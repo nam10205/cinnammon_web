@@ -1,9 +1,68 @@
+// SearchView from the keyword search diagram: the header search box, its recent-history dropdown
+// (steps 1-6), the keyword check before submitting (7-11) and the error popup the other views share.
 (function () {
-  var form = document.querySelector('.shell-search');
-  if (!form) return;
-  var input = form.elements['q'], mode = form.elements['mode'], mic = document.getElementById('mic');
+  var MAX_KEYWORD = 100;
+  // Same blocks as the server's EMOJI_RE, so the browser and the server agree on what is refused.
+  var EMOJI = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}\u{20E3}]/u;
+  var LETTER = /[\p{L}\p{N}]/u;
+  var modal = null, afterClose = null;
 
-  // Recent searches under the box, like a search engine: shown on focus, filtered while typing.
+  // showError(title, message): a small centred popup; OK puts the cursor back where the customer was.
+  function showError(title, message, onClose) {
+    if (!modal) {
+      var el = document.createElement('div');
+      el.className = 'modal fade';
+      el.tabIndex = -1;
+      el.setAttribute('aria-labelledby', 'popup-error-title');
+      el.innerHTML =
+        '<div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content">' +
+        '<div class="modal-body text-center p-4">' +
+        '<i class="bi bi-exclamation-circle fs-2 text-danger" aria-hidden="true"></i>' +
+        '<h2 class="h6 mt-2 mb-1" id="popup-error-title"></h2>' +
+        '<p class="hint mb-3" id="popup-error-text"></p>' +
+        '<button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">OK</button>' +
+        '</div></div></div>';
+      document.body.appendChild(el);
+      el.addEventListener('hidden.bs.modal', function () { if (afterClose) afterClose(); });
+      modal = { el: el, bs: window.bootstrap ? new bootstrap.Modal(el) : null };
+    }
+    afterClose = onClose || null;
+    modal.el.querySelector('#popup-error-title').textContent = title;
+    modal.el.querySelector('#popup-error-text').textContent = message;
+    if (modal.bs) modal.bs.show(); else { alert(title + '\n' + message); if (afterClose) afterClose(); }
+  }
+  window.searchView = { showError: showError };
+
+  var form = document.querySelector('.shell-search');
+  var input = form && form.elements['q'];
+  function backToBox() { if (input) { input.focus(); input.select(); } }
+
+  // The server refused something (bad keyword, bad photo): show its message the same way.
+  var served = document.getElementById('popup-error');
+  if (served) showError(served.dataset.title, served.dataset.message, backToBox);
+
+  if (!form) return;
+  var mode = form.elements['mode'], mic = document.getElementById('mic');
+
+  // 9: validateKeyword(), mirrored from SearchController so a bad keyword never leaves the page.
+  function validateKeyword(keyword) {
+    keyword = keyword.trim();
+    if (!keyword) return 'Type a product name or brand to search.';
+    if (keyword.length > MAX_KEYWORD) return 'Keep your search under ' + MAX_KEYWORD + ' characters.';
+    if (EMOJI.test(keyword)) return "Search can't contain emojis. Please use letters and numbers only.";
+    if (!LETTER.test(keyword)) return 'Use letters or numbers to search.';
+    return null;
+  }
+
+  // 7-8: submit query -> searchByKeyword(keyword), or 11: showError("Invalid Keyword").
+  form.addEventListener('submit', function (e) {
+    var problem = validateKeyword(input.value);
+    if (!problem) return;
+    e.preventDefault();
+    showError('Invalid Keyword', problem, backToBox);
+  });
+
+  // 1-6: selecting the box shows the customer's recent keywords, filtered while typing.
   var list = document.createElement('ul');
   list.className = 'search-recent';
   list.id = 'search-recent';
@@ -26,7 +85,8 @@
     }).join('');
   }
 
-  function load() {
+  // 2-5: showSearchBox(customerId) -> SearchController -> SearchHistoryDAO.findRecent -> listHistory.
+  function showSearchBox() {
     if (items) return Promise.resolve(items);
     if (!loading) {
       loading = fetch('/api/search/history', { headers: { Accept: 'application/json' } })
@@ -51,7 +111,8 @@
     return e;
   }
 
-  function render() {
+  // 6: show recent history.
+  function showRecentHistory() {
     var typed = fold(input.value.trim());
     shown = items.filter(function (it) { return !typed || fold(it.q).indexOf(typed) !== -1; })
                  .filter(function (it) { return fold(it.q) !== typed; });
@@ -99,15 +160,18 @@
     form.submit();
   }
 
-  function open() { load().then(function () { if (document.activeElement === input) render(); }); }
+  // 1: selectKeywordSearchBar.
+  function selectKeywordSearchBar() {
+    showSearchBox().then(function () { if (document.activeElement === input) showRecentHistory(); });
+  }
 
-  input.addEventListener('focus', open);
-  input.addEventListener('click', open);
-  input.addEventListener('input', function () { if (items) render(); else open(); });
+  input.addEventListener('focus', selectKeywordSearchBar);
+  input.addEventListener('click', selectKeywordSearchBar);
+  input.addEventListener('input', function () { if (items) showRecentHistory(); else selectKeywordSearchBar(); });
   input.addEventListener('blur', close);
   input.addEventListener('keydown', function (e) {
     if (list.hidden) {
-      if (e.key === 'ArrowDown') { open(); e.preventDefault(); }
+      if (e.key === 'ArrowDown') { selectKeywordSearchBar(); e.preventDefault(); }
       return;
     }
     if (e.key === 'ArrowDown') { highlight((active + 1) % shown.length); e.preventDefault(); }

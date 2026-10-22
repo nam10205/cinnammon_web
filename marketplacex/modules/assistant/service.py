@@ -39,9 +39,9 @@ def check_rate(key: str) -> None:
 
 def _products_context(question: str) -> str:
     from ..catalog.models import Product
-    from ..search import service as search
+    from ..search.dao import ProductDAO
     from ...extensions import db
-    items = search.search_text(question)[:8]
+    items = ProductDAO.find_by_keyword(question)[:8]
     if not items:
         top = db.session.query(Product).order_by(Product.avg_rating.desc(), Product.id).limit(5).all()
         return "No direct matches. Popular products:\n" + "\n".join(_product_line(p) for p in top)

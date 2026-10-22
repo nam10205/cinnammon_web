@@ -7,11 +7,30 @@ import io
 import math
 import struct
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from ...errors import ValidationError
 
 BINS = 64
+FILE_ERROR = "That file is not an image. Please choose a JPG, PNG or WebP photo."
+
+
+def open_image(image_bytes: bytes | None) -> Image.Image:
+    """Decode an upload, upright and in RGB, or raise the error the diagrams show as "File error"."""
+    if not image_bytes:
+        raise ValidationError("Choose a photo to search with.")
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img = ImageOps.exif_transpose(img).convert("RGB")
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError, Image.DecompressionBombError):
+        raise ValidationError(FILE_ERROR)
+    return img
+
+
+def to_jpeg(img: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
 
 
 def feature_vector(image_bytes: bytes) -> list[float]:
@@ -20,7 +39,7 @@ def feature_vector(image_bytes: bytes) -> list[float]:
         img.draft("RGB", (64, 64))   # JPEG: decode at reduced size to cap memory
         img = img.convert("RGB").resize((64, 64))
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
-        raise ValidationError("That file is not an image")
+        raise ValidationError(FILE_ERROR)
     hist = [0.0] * BINS
     for r, g, b in img.getdata():
         hist[(r // 64) * 16 + (g // 64) * 4 + (b // 64)] += 1.0

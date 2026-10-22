@@ -1,4 +1,5 @@
-"""Common query object: text, voice transcript and image all become one Query (report §10.1, FR03)."""
+"""SearchQuery and SearchRegion entities from the sequence diagrams: keyword, voice and image searches all become
+one SearchQuery (report §10.1, FR03)."""
 from __future__ import annotations
 
 import re
@@ -13,7 +14,30 @@ SORTS = ("relevance", "sales", "rating", "newest", "price_asc", "price_desc")
 
 
 @dataclass
-class Query:
+class SearchRegion:
+    """The box the customer drew around the product in their photo, in image pixels."""
+    x: int
+    y: int
+    width: int
+    height: int
+
+    @classmethod
+    def from_form(cls, form) -> SearchRegion | None:
+        try:
+            r = cls(*(int(float(form[k])) for k in ("x", "y", "width", "height")))
+        except (KeyError, TypeError, ValueError):
+            return None
+        return r if r.width > 0 and r.height > 0 else None
+
+    def crop(self, img):
+        """Crop a PIL image to this region, clamped to the picture; a box that misses it keeps the whole image."""
+        left, top = max(0, self.x), max(0, self.y)
+        right, bottom = min(img.width, self.x + self.width), min(img.height, self.y + self.height)
+        return img.crop((left, top, right, bottom)) if right > left and bottom > top else img
+
+
+@dataclass
+class SearchQuery:
     type: str
     raw: str
     terms: list = field(default_factory=list)
@@ -24,11 +48,41 @@ class Query:
     sort: str = "relevance"
     degraded: bool = False
     alts: dict = field(default_factory=dict)  # term -> Vietnamese tokens that also satisfy it
+    image: bytes | None = None   # image searches: the (cropped) photo as JPEG
+    region: SearchRegion | None = None
 
     def as_dict(self) -> dict:
         return {"type": self.type, "raw": self.raw, "terms": self.terms, "max_price": self.max_price,
                 "min_price": self.min_price, "vector": self.vector, "filters": self.filters, "sort": self.sort,
                 "degraded": self.degraded}
+
+    @classmethod
+    def new(cls, search_type: str, keyword: str = "", image: bytes | None = None,
+            region: SearchRegion | None = None) -> SearchQuery:
+        """new(keyword, searchType) for keyword and voice; new("IMAGE", image, region) for a photo."""
+        if search_type != "image":
+            return build_query(search_type, text=keyword)
+        from . import images
+        img = images.open_image(image)
+        if region:
+            img = region.crop(img)
+        cropped = images.to_jpeg(img)
+        q = build_query("image", text="", image_vector=images.feature_vector(cropped))
+        q.raw, q.image, q.region = keyword, cropped, region
+        return q
+
+    @staticmethod
+    def validate_image(image: bytes) -> tuple[int, int]:
+        """validateImage(): the upload must be a picture we can read. Returns its size."""
+        from . import images
+        return images.open_image(image).size
+
+    def to_history(self, customer):
+        """The SearchHistory row SearchHistoryDAO.save() stores for this query."""
+        from ... import clock
+        from .models import SearchHistory
+        return SearchHistory(customer_id=customer.id, keyword=self.raw.strip()[:255], search_type=self.type,
+                             searched_at=clock.now())
 
 
 def strip_diacritics(s: str) -> str:
@@ -89,9 +143,9 @@ def _terms(text: str) -> tuple[list[str], dict]:
 
 
 def build_query(mode: str, text: str = "", image_vector: list[float] | None = None, filters: dict | None = None,
-                sort: str = "relevance") -> Query:
+                sort: str = "relevance") -> SearchQuery:
     mode = mode if mode in ("text", "voice", "image") else "text"
-    q = Query(type=mode, raw=text or "", filters={k: v for k, v in (filters or {}).items() if v not in (None, "")},
+    q = SearchQuery(type=mode, raw=text or "", filters={k: v for k, v in (filters or {}).items() if v not in (None, "")},
               sort=sort if sort in SORTS else "relevance")
     if mode == "image":
         if not image_vector:
